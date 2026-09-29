@@ -142,7 +142,7 @@ publish:
 | 수동 실행 입력 | `since`(1d/7d), `fixture`(가상 팀 시연), `dry_run`(테스트 채널로 발송, 기본 true) |
 | generate job | 수집 → 그래프 실행 → `report.md`를 Job Summary에 표시 → artifact 업로드 |
 | publish job | `environment: daily-report` 승인 대기 → 승인 마감 확인 → Discord 발송 |
-| ci.yml | push마다 테스트 57개 + fixture 5종 데모 실행 (API 키 불필요) |
+| ci.yml | push마다 테스트 90개(커버리지 95% 미만이면 실패) + fixture 5종 데모 실행 (API 키 불필요) |
 
 **Secrets / Variables**
 
@@ -187,7 +187,7 @@ team-pm-agent/
 │  └─ publish.py            # Discord 분할 전송, 429 재시도, 승인 마감
 ├─ fixtures/                # 가상 팀 시나리오 5종 (scripts/make_fixtures.py 로 생성)
 ├─ examples/                # fixture 별 리포트 출력 예시
-├─ tests/                   # 57개 테스트
+├─ tests/                   # 90개 테스트, 커버리지 99%
 ├─ config.yaml              # 팀원 매핑, 임계값, LLM, 승인 마감
 └─ requirements.txt · requirements-llm.txt
 ```
@@ -206,7 +206,7 @@ team-pm-agent/
 
 > 마감일에 맞춰 D6을 빼거나 D1~D2를 합칠 수 있습니다. **D5까지 끝나면 MVP 완성**입니다.
 
-**구현 현황 (2026-09-29)**: D1~D6 코드는 가상 팀 데이터로 구현·테스트 완료(테스트 57개 통과). 남은 일은 실제 팀 저장소 연결(토큰, `config.yaml` 팀원 매핑), 실제 LLM 연결, Environment·Discord 설정, D7 운영입니다.
+**구현 현황 (2026-09-29)**: D1~D6 코드는 가상 팀 데이터로 구현·테스트 완료(테스트 90개 통과, 커버리지 99%). 남은 일은 실제 팀 저장소 연결(토큰, `config.yaml` 팀원 매핑), 실제 LLM 연결, Environment·Discord 설정, D7 운영입니다.
 
 ## 11. 리스크와 대응
 

@@ -25,7 +25,8 @@ ROUTES = {
     ("pulls", "open"): [{"number": 37, "title": "결제 리팩터링", "state": "open", "draft": False,
                          "user": {"login": "minsu-dev"}, "created_at": Z(52), "updated_at": Z(20),
                          "merged_at": None, "body": "Closes #43", "html_url": "u/37"}],
-    ("pulls", "closed"): [],
+    ("pulls", "closed"): [{"number": 20, "title": "옛날 PR", "state": "closed", "user": {"login": "minsu-dev"},
+                           "created_at": Z(300), "updated_at": Z(200), "merged_at": None, "html_url": "u/20"}],
     f"{R}/pulls/37/commits": [],
     f"{R}/pulls/37/reviews": [],
     f"{R}/pulls/37/requested_reviewers": {"users": [{"login": "seoyeon-park"}]},
@@ -40,11 +41,18 @@ ROUTES = {
     f"{R}/actions/runs": {"workflow_runs": [
         {"id": 1, "run_number": 144, "name": "CI", "head_branch": "main", "head_sha": "aaaaaaa111",
          "event": "push", "conclusion": "failure", "created_at": Z(5), "actor": {"login": "haedeuncha"},
-         "html_url": "u/run144"}]},
+         "html_url": "u/run144"},
+        {"id": 2, "run_number": 145, "name": "CI", "head_branch": "dev", "head_sha": "ddddddd444",
+         "event": "push", "conclusion": "success", "created_at": Z(4), "actor": {"login": "jiwoo-lee"},
+         "html_url": "u/run145"}]},
     f"{R}/actions/runs/1/jobs": {"jobs": [{"id": 11, "name": "test", "conclusion": "failure",
-                                            "steps": [{"name": "Run pytest", "conclusion": "failure"}]}]},
+                                            "steps": [{"name": "Run pytest", "conclusion": "failure"}]},
+                                           {"id": 12, "name": "lint", "conclusion": "success", "steps": []}]},
     f"{R}/actions/jobs/11/logs": LOG,
 }
+
+
+FAIL_LOGS = False
 
 
 def handler(req: httpx.Request):
@@ -57,6 +65,8 @@ def handler(req: httpx.Request):
             return httpx.Response(200, json=[])
     else:
         key = path
+    if key == f"{R}/actions/jobs/11/logs" and FAIL_LOGS:
+        return httpx.Response(404)
     body = ROUTES[key]
     if isinstance(body, str):
         return httpx.Response(200, text=body)
@@ -80,3 +90,14 @@ def test_collect_end_to_end(cfg):
     assert rules == ["R-CI-MAIN-RED", "R-ISSUE-BLOCKED", "R-ISSUE-UNOWNED", "R-PR-STALE"]
     assert any(e.kind == "review_requested" for e in build_digests(raw, cfg)["seoyeon"].today)
     assert client.calls < 300                                          # NFR-09
+
+
+def test_collect_log_download_failure(cfg):
+    global FAIL_LOGS
+    FAIL_LOGS = True
+    try:
+        raw = collect(cfg, GitHubClient("t", transport=httpx.MockTransport(handler)), NOW - timedelta(hours=24), NOW)
+    finally:
+        FAIL_LOGS = False
+    job = raw.ci_runs[0].jobs[0]
+    assert job.log_tail == "" and job.failed_tests == []

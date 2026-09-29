@@ -18,7 +18,7 @@ GitHub Actions(평일 08:07 KST)
 ```bash
 pip install -r requirements.txt
 python -m pm_agent.run --fixture fixtures/ci_flaky.json     # → report.md
-python -m pytest -q                                         # 57 passed
+python -m pytest -q --cov=pm_agent                          # 90 passed, 커버리지 99%
 ```
 
 가상 팀 **campus-market**: 해든(팀장·인증) · 민수(결제) · 지우(프론트) · 서연(채팅·알림)

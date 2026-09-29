@@ -7,13 +7,16 @@
 | 파일 | 대상 | 개수 |
 |---|---|---|
 | `tests/test_collector.py` | TC-COL-01~09 (+ 429 대기, Jest/JUnit 패턴) | 14 |
-| `tests/test_collect_api.py` | 가짜 GitHub API로 `collect()` 전체 배선 | 1 |
+| `tests/test_collect_api.py` | 가짜 GitHub API로 `collect()` 전체 배선, 로그 다운로드 실패 | 2 |
 | `tests/test_rules.py` | TC-RULE 전체 경계값, 임계값 설정, 근거 데이터 | 14 |
 | `tests/test_graph.py` | TC-GRAPH-01~07, TC-AGT-01·04, 모든 줄 근거 링크(TC-EVAL-01 자동화) | 16 |
 | `tests/test_validator.py` | TC-AGT-02~06, V4 | 7 |
 | `tests/test_publish.py` | TC-PUB-01·02, 승인 마감 | 5 |
+| `tests/test_cli.py` | `run.py`·`publish.py` 실행 흐름 (fixture/실제 수집 모드, 토큰 없음, 만료, 발송) | 11 |
+| `tests/test_llm.py` | 실제 LLM 래퍼(가짜 chat 모델), FakeLLM 분기 | 7 |
+| `tests/test_edges.py` | LLM 실패, GitHub 5xx·재시도, 로그 다운로드 실패 등 오류 경로 | 14 |
 
-`python -m pytest -q` → **57 passed** (API 키·네트워크 불필요). TC-E2E, TC-EVAL(수동 지표)은 실제 저장소 연결 후 진행합니다.
+`python -m pytest -q --cov=pm_agent` → **90 passed, 커버리지 99%** (API 키·네트워크 불필요). CI는 커버리지 95% 미만이면 실패합니다. TC-E2E, TC-EVAL(수동 지표)은 실제 저장소 연결 후 진행합니다.
 
 ## 1. 테스트 전략
 
