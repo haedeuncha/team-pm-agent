@@ -2,6 +2,8 @@
 
 > Daily Scrum Automation with GitHub Actions + Multi-Agent (LangGraph)
 
+> 📌 **설정·운영에서 사람이 해야 할 일은 [TODO.md](TODO.md)에 정리돼 있습니다.**
+
 매일 아침 GitHub Actions가 팀 저장소의 커밋·PR·이슈·CI 결과를 수집하고, 멀티 에이전트가 **팀원별 어제 한 일 / 오늘 할 일 / 위험 요소**를 정리합니다. 팀장이 승인하면 팀 채널로 데일리 리포트를 발송합니다.
 
 ```
