@@ -20,6 +20,7 @@ GitHub Actions(평일 08:07 KST)
 | [DATA_SPEC](docs/DATA_SPEC.md) | 데이터 명세서 (GitHub API, 데이터 모델, fixtures) |
 | [AGENTS](docs/AGENTS.md) | 에이전트 설계서 (그래프, 입출력 계약, 프롬프트, 검증) |
 | [TEST_PLAN](docs/TEST_PLAN.md) | 테스트 계획서 (단위·그래프·E2E, 품질 평가) |
+| [TEAM_AGREEMENT](docs/TEAM_AGREEMENT.md) | 팀 합의서 (수집 범위, 약속) |
 
 ## 적용 과정
 09 GitHub Actions · 03 Supervisor · 05 Handoff · 06 발송 승인
