@@ -44,8 +44,8 @@ jobs:
       skip: ${{ steps.run.outputs.skip }}
       risks: ${{ steps.run.outputs.risks }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -55,7 +55,7 @@ jobs:
       - name: GitHub App token
         id: app-token
         if: vars.GH_APP_ID != ''
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
@@ -88,7 +88,7 @@ jobs:
         if: steps.run.outputs.skip != 'true'
         run: cat report.md >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: report
           path: |
@@ -113,13 +113,13 @@ jobs:
       contents: write           # 상태 저장소 브랜치(pm-agent-state)에 발송 기록
       actions: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: report
       - name: Send

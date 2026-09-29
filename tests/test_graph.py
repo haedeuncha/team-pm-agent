@@ -124,3 +124,13 @@ def test_every_member_line_has_valid_ref(cfg, fixture, name):
             refs = REF_RE.findall(line)
             assert refs and all(r in universe for r in refs), line
     assert "[pr:" not in s["report_md"] and "`pr:" not in s["report_md"]   # 모두 링크로 렌더링
+
+
+def test_many_commit_links_are_compacted():
+    """실데이터 개선: 커밋 12건이면 링크 12개가 한 줄에 몰려 읽기 어려웠음."""
+    from pm_agent.render import compact_refs
+    line = "커밋 5건: a, b 외 3건 [commit:a1][commit:b2][commit:c3][commit:d4][commit:e5]"
+    assert compact_refs(line) == "커밋 5건: a, b 외 3건 [commit:a1][commit:b2][commit:c3] 외 2개"
+    assert compact_refs("PR 머지 [pr:35]") == "PR 머지 [pr:35]"
+    from pm_agent.render import space_refs
+    assert space_refs("x [commit:a1][pr:2]") == "x [commit:a1] [pr:2]"

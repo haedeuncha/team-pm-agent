@@ -25,12 +25,12 @@
 ### 지우
 - **어제**
   - PR 생성: 상품 목록 UI [#36](<https://github.com/demo-team/campus-market/pull/36>)
-  - 커밋 3건: 상품 카드 컴포넌트 분리 (#42), 무한 스크롤 IntersectionObserver 적용 (#42) 외 1건 [d4e5f6a](<https://github.com/demo-team/campus-market/commit/d4e5f6a>)[e5f6a7b](<https://github.com/demo-team/campus-market/commit/e5f6a7b>)[1b2c3d4](<https://github.com/demo-team/campus-market/commit/1b2c3d4>)
+  - 커밋 3건: 상품 카드 컴포넌트 분리 (#42), 무한 스크롤 IntersectionObserver 적용 (#42) 외 1건 [d4e5f6a](<https://github.com/demo-team/campus-market/commit/d4e5f6a>) [e5f6a7b](<https://github.com/demo-team/campus-market/commit/e5f6a7b>) [1b2c3d4](<https://github.com/demo-team/campus-market/commit/1b2c3d4>)
 - **오늘**
   - 담당 이슈: 상품 목록 무한 스크롤 [#42](<https://github.com/demo-team/campus-market/issues/42>)
 ### 서연
 - **어제**
-  - 커밋 2건: 채팅 읽음 이벤트 스키마 추가 (#44), 채팅방 목록 페이지네이션 [f6a7b8c](<https://github.com/demo-team/campus-market/commit/f6a7b8c>)[2c3d4e5](<https://github.com/demo-team/campus-market/commit/2c3d4e5>)
+  - 커밋 2건: 채팅 읽음 이벤트 스키마 추가 (#44), 채팅방 목록 페이지네이션 [f6a7b8c](<https://github.com/demo-team/campus-market/commit/f6a7b8c>) [2c3d4e5](<https://github.com/demo-team/campus-market/commit/2c3d4e5>)
 - **오늘**
   - 담당 이슈: 채팅 읽음 표시 [#44](<https://github.com/demo-team/campus-market/issues/44>)
   - 리뷰 요청 받음: 상품 목록 UI [#36](<https://github.com/demo-team/campus-market/pull/36>)

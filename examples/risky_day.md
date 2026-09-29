@@ -29,7 +29,7 @@
   - 담당 이슈: 결제 취소 API [#43](<https://github.com/demo-team/campus-market/issues/43>)
 ### 지우
 - **어제**
-  - 커밋 2건: 무한 스크롤 IntersectionObserver 적용 (#42), 상세 페이지 이미지 슬라이더 [e5f6a7b](<https://github.com/demo-team/campus-market/commit/e5f6a7b>)[5f6a7b8](<https://github.com/demo-team/campus-market/commit/5f6a7b8>)
+  - 커밋 2건: 무한 스크롤 IntersectionObserver 적용 (#42), 상세 페이지 이미지 슬라이더 [e5f6a7b](<https://github.com/demo-team/campus-market/commit/e5f6a7b>) [5f6a7b8](<https://github.com/demo-team/campus-market/commit/5f6a7b8>)
 - **오늘**
   - 담당 이슈: 상품 목록 무한 스크롤 [#42](<https://github.com/demo-team/campus-market/issues/42>)
   - 담당 이슈: 찜하기 기능 [#38](<https://github.com/demo-team/campus-market/issues/38>)
