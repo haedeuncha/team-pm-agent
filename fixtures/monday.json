@@ -1,0 +1,164 @@
+{
+  "repo": "demo-team/campus-market",
+  "default_branch": "main",
+  "since": "2026-10-01T23:07:00Z",
+  "until": "2026-10-04T23:07:00Z",
+  "commits": [
+    {
+      "sha": "7a8b9c0",
+      "author": "minsu",
+      "message": "결제 취소 환불 금액 계산 (#43)",
+      "committed_at": "2026-10-02T01:07:00Z",
+      "url": "https://github.com/demo-team/campus-market/commit/7a8b9c0",
+      "issue_refs": [
+        43
+      ]
+    },
+    {
+      "sha": "8b9c0d1",
+      "author": "seoyeon",
+      "message": "채팅 읽음 표시 UI (#44)",
+      "committed_at": "2026-10-02T21:07:00Z",
+      "url": "https://github.com/demo-team/campus-market/commit/8b9c0d1",
+      "issue_refs": [
+        44
+      ]
+    },
+    {
+      "sha": "9c0d1e2",
+      "author": "haeden",
+      "message": "토큰 갱신 테스트 시간 고정 (#41)",
+      "committed_at": "2026-10-04T03:07:00Z",
+      "url": "https://github.com/demo-team/campus-market/commit/9c0d1e2",
+      "issue_refs": [
+        41
+      ]
+    }
+  ],
+  "pull_requests": [],
+  "issues": [
+    {
+      "number": 41,
+      "title": "리프레시 토큰 갱신 버그",
+      "state": "closed",
+      "labels": [
+        "bug"
+      ],
+      "assignees": [
+        "haeden"
+      ],
+      "created_at": "2026-09-28T17:07:00Z",
+      "updated_at": "2026-09-28T17:07:00Z",
+      "closed_at": "2026-10-04T04:07:00Z",
+      "closed_by": "haeden",
+      "assigned_at": null,
+      "last_linked_activity": null,
+      "url": "https://github.com/demo-team/campus-market/issues/41"
+    }
+  ],
+  "open_assigned": {
+    "minsu": [
+      {
+        "number": 43,
+        "title": "결제 취소 API",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "minsu"
+        ],
+        "created_at": "2026-10-02T21:07:00Z",
+        "updated_at": "2026-10-02T21:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-10-03T17:07:00Z",
+        "last_linked_activity": "2026-10-04T13:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/43"
+      }
+    ],
+    "jiwoo": [
+      {
+        "number": 42,
+        "title": "상품 목록 무한 스크롤",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "jiwoo"
+        ],
+        "created_at": "2026-10-03T07:07:00Z",
+        "updated_at": "2026-10-03T07:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-10-03T21:07:00Z",
+        "last_linked_activity": "2026-10-04T20:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/42"
+      }
+    ],
+    "seoyeon": [
+      {
+        "number": 44,
+        "title": "채팅 읽음 표시",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "seoyeon"
+        ],
+        "created_at": "2026-10-02T11:07:00Z",
+        "updated_at": "2026-10-02T11:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-10-03T07:07:00Z",
+        "last_linked_activity": "2026-10-04T15:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/44"
+      }
+    ]
+  },
+  "open_unassigned_bugs": [],
+  "ci_runs": [
+    {
+      "run_id": 9150,
+      "run_number": 150,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "9c0d1e2",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-10-02T11:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9150"
+    },
+    {
+      "run_id": 9151,
+      "run_number": 151,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "9c0d1e2",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-10-02T21:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9151"
+    },
+    {
+      "run_id": 9152,
+      "run_number": 152,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "9c0d1e2",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-10-03T07:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9152"
+    }
+  ],
+  "unmapped_commits": 0
+}

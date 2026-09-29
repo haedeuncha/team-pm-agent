@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 .venv/
 .env
-report.md
+/report.md
+/report.json
 .pytest_cache/

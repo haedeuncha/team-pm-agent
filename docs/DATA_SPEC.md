@@ -32,6 +32,8 @@
 | A7 | 열린 할당 이슈 | `GET /repos/{o}/{r}/issues` | `state=open&assignee={login}` | 팀원별로 호출, 기간 무관 |
 | A8 | CI 실행 | `GET /repos/{o}/{r}/actions/runs` | `created=>={since 날짜}` | 반복 실패 판정을 위해 **최근 20회**는 기간과 무관하게 추가 조회 |
 | A9 | CI job | `GET /repos/{o}/{r}/actions/runs/{id}/jobs` | — | 실패한 run만 조회 |
+| A11 | 이슈 이벤트 | `GET /repos/{o}/{r}/issues/{n}/events` | — | 열린 할당 이슈의 마지막 `assigned` 시각 (막힌 작업 판정) |
+| A12 | 담당자 없는 버그 | `GET /repos/{o}/{r}/issues` | `state=open&labels=bug&assignee=none` | 기간 무관 |
 | A10 | job 로그 | `GET /repos/{o}/{r}/actions/jobs/{id}/logs` | — | 실패한 job만, 302 리다이렉트를 따라감. **마지막 200줄만 저장** |
 
 예상 호출 수(4인 팀, 1일): A1~A6 약 30회 + A7 4회 + A8~A10 약 20회 ≈ **60회** (NFR-09 기준 300회 이하)
@@ -82,6 +84,8 @@ class Issue(BaseModel):
     created_at: datetime
     closed_at: datetime | None
     closed_by: str | None
+    assigned_at: datetime | None           # A11 마지막 assigned 이벤트
+    last_linked_activity: datetime | None  # 이 이슈를 참조한 커밋/PR의 마지막 활동 (최근 3일 커밋 기준)
     url: str
 
 class CIJob(BaseModel):
@@ -114,8 +118,12 @@ class RawActivity(BaseModel):
     pull_requests: list[PullRequest]
     issues: list[Issue]
     open_assigned: dict[str, list[Issue]]   # 팀원 key → 열린 할당 이슈
+    open_unassigned_bugs: list[Issue]       # A12
     ci_runs: list[CIRun]                    # 기간 내 + 최근 20회
+    unmapped_commits: int                   # 팀원 매핑에 실패한 커밋 수
 ```
+
+> 구현: `pm_agent/models.py`, `pm_agent/collector/`. 막힌 작업 판정을 위해 커밋은 `min(since, now-3일)`부터 가져오고, 리포트의 "어제 한 일"에는 기간 안의 커밋만 씁니다.
 
 ## 4. 실패한 테스트 이름 추출
 
@@ -173,12 +181,21 @@ class MemberDigest(BaseModel):
 
 ## 7. Fixtures
 
+가상 팀 **campus-market**(캠퍼스 중고거래 앱)의 시나리오입니다. `python scripts/make_fixtures.py`로 다시 만들 수 있습니다.
+
+| 팀원 key | 이름 | GitHub (가상) | 담당 |
+|---|---|---|---|
+| haeden | 해든 (팀장) | haedeuncha | 인증 |
+| minsu | 민수 | minsu-dev | 결제 |
+| jiwoo | 지우 | jiwoo-lee | 프론트엔드 |
+| seoyeon | 서연 | seoyeon-park | 채팅·알림 |
+
 | 파일 | 내용 | 용도 |
 |---|---|---|
-| `fixtures/normal_day.json` | 평범한 하루 (커밋 10, PR 2, CI 전부 성공) | 기본 경로 |
-| `fixtures/quiet_day.json` | 활동 없음 | "특이사항 없음" 경로 |
-| `fixtures/risky_day.json` | 52시간 방치 PR, 3일 무진척 이슈, 담당자 없는 bug | 위험 판정 |
-| `fixtures/ci_flaky.json` | 같은 SHA에서 성공·실패, 같은 테스트 5회 중 3회 실패 | Handoff 경로 |
+| `fixtures/normal_day.json` | PR 머지·리뷰, 커밋 9건, CI 전부 성공, 리뷰 대기 50시간 PR 1건 | 기본 경로 (pr_analyst만) |
+| `fixtures/quiet_day.json` | 기간 내 활동 없음 | "특이사항 없음" 경로 |
+| `fixtures/risky_day.json` | 52시간 리뷰 대기 PR, 6일 방치 PR, 4일 무진척 이슈, 담당자 없는 bug | 위험 판정 (pr → issue) |
+| `fixtures/ci_flaky.json` | `test_refresh`가 5회 중 3회 실패, 같은 SHA에서 성공·실패, main 마지막 실패 | Handoff 경로 |
 | `fixtures/monday.json` | 금~월 72시간 범위 | 기간 계산 |
 
 - D1에 실제 팀 저장소 응답을 녹화해 만들고, 이메일 등 개인정보는 가짜 값으로 바꿔서 커밋합니다(저장소가 public이므로).

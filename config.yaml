@@ -1,0 +1,42 @@
+# team-pm-agent 설정 (docs/DATA_SPEC.md 5장)
+# 아래 팀과 저장소는 개발·시연용 가상 데이터입니다. 실제 팀에 적용할 때 바꾸세요.
+team_repo: demo-team/campus-market
+timezone: Asia/Seoul
+leader: haeden                 # 리포트 승인자 (members의 key)
+approval_deadline_kst: "12:00" # 이 시각까지 승인되지 않으면 발송하지 않음
+
+members:
+  haeden:
+    display: 해든
+    github: haedeuncha
+    emails: []                 # 실제 이메일은 public 저장소에 커밋하지 마세요
+  minsu:
+    display: 민수
+    github: minsu-dev
+    emails: []
+  jiwoo:
+    display: 지우
+    github: jiwoo-lee
+    emails: []
+  seoyeon:
+    display: 서연
+    github: seoyeon-park
+    emails: []
+
+bots: ["dependabot[bot]", "github-actions[bot]"]
+test_log_pattern: pytest       # pytest | jest | junit
+
+thresholds:
+  pr_stale_hours: 48
+  pr_abandoned_days: 5
+  issue_blocked_days: 3
+  ci_repeat_window: 5
+  ci_repeat_min_failures: 3
+  ci_recent_runs: 20
+
+llm:
+  provider: fake               # fake(오프라인) | openai | anthropic
+  model: null                  # 예: gpt-4o-mini, claude-haiku-4-5
+  temperature: 0
+
+max_hops: 6

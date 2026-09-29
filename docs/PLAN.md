@@ -65,38 +65,28 @@ flowchart LR
 | 노드 | 종류 | 입력 | 출력 | LLM |
 |---|---|---|---|---|
 | `collector` | 함수 노드 | 저장소, 기간 | `raw`: commits, prs, issues, ci_runs | ✗ |
-| `supervisor` | 라우터 Agent | `raw`, 완료된 분석 목록 | 다음 노드 이름 (`Command(goto=...)`) | △ (규칙 우선, 애매할 때만) |
+| `supervisor` | 라우터 (규칙 기반) | 위험 후보, 완료된 분석 목록 | 다음 노드 이름 (`Command(goto=...)`) | ✗ |
 | `pr_analyst` | 워커 Agent | 열린 PR, 리뷰 기록 | `findings.pr` | ✓ |
-| `ci_analyst` | 워커 Agent | 워크플로 실행 기록, 실패 job 로그 요약 | `findings.ci`, 필요하면 Handoff | ✓ |
+| `ci_analyst` | 워커 Agent | 워크플로 실행 기록, 실패 job 로그 요약 | `findings`, Handoff 여부를 **스스로 판단** | ✓ |
 | `issue_analyst` | 워커 Agent | 이슈, 담당자, 연결된 커밋 | `findings.issue` | ✓ |
 | `ci_diagnoser` *(확장)* | 전문 Agent | 반복 실패 테스트 로그 | 원인 가설, 재현 방법 | ✓ |
-| `summarizer` | 워커 Agent | `raw` 요약, `findings` 전체 | `report_md` | ✓ |
+| `summarizer` | 워커 Agent | 팀원별 근거, `findings` 전체 | `report` (검증 후 `report_md`) | ✓ |
+| `validator` | 함수 | `report`, 근거 | 통과 / 재시도 / fallback | ✗ |
 
 ### 4.1 Supervisor 라우팅 규칙 (03)
-1. 분석할 영역 = 지난 기간에 **변화가 있는 영역**만 고릅니다(새 PR·리뷰, CI 실행, 이슈 변경).
-2. 이미 분석을 끝낸 영역은 건너뜁니다.
-3. 남은 영역이 없으면 `summarizer`로, 처음부터 변화가 전혀 없으면 `quiet_report`로 보냅니다.
-4. 무한 루프를 막기 위해 최대 반복 횟수(예: 6회)를 둡니다.
+1. 분석할 영역 = 규칙 엔진이 **위험 후보를 찾은 영역**만 고릅니다. 후보가 없는 영역에 LLM을 부르지 않습니다.
+2. 이미 분석을 끝낸 영역은 건너뜁니다. 순서는 `ci` → `pr` → `issue`입니다.
+3. 남은 영역이 없으면 `summarizer`로, 변화도 후보도 전혀 없으면 `quiet_report`로 보냅니다.
+4. 무한 루프를 막기 위해 최대 방문 횟수(`max_hops`, 기본 6회)를 둡니다.
 
 ### 4.2 Handoff (05)
-- `ci_analyst`에서 **같은 테스트가 최근 5회 중 3회 이상 실패**하면 `Command(goto="ci_diagnoser", update={...})`로 넘깁니다.
-- 넘길 때는 해당 테스트의 로그 조각과 관련 커밋만 전달해서 컨텍스트를 작게 유지합니다.
+- `ci_analyst`(LLM)는 반복 실패(`R-CI-REPEAT`)나 flaky(`R-CI-FLAKY`) 후보를 보고 **진단 에이전트에게 넘길지 스스로 판단**합니다(`handoff_to_diagnoser`).
+- 넘기기로 하면 `Command(goto="ci_diagnoser", update={...})`로 이동합니다. 넘길 대상 테스트가 없으면 코드가 막습니다.
+- 넘길 때는 해당 테스트의 로그 조각(실행당 80줄)과 커밋 목록만 전달해서 컨텍스트를 작게 유지합니다.
 - 진단이 끝나면 Supervisor로 돌아갑니다.
 
-### 4.3 State 스키마 (초안)
-
-```python
-class PMState(TypedDict):
-    repo: str
-    since: datetime
-    raw: RawActivity                 # collector 결과
-    todo_areas: list[str]            # ["pr", "ci", "issue"]
-    done_areas: Annotated[list[str], operator.add]
-    findings: Annotated[dict, merge_dict]  # {"pr": [...], "ci": [...], ...}
-    members: dict[str, MemberDigest] # 팀원별 어제/오늘 근거 데이터
-    report_md: str
-    hops: int
-```
+### 4.3 State
+세부 스키마는 [AGENTS.md 2장](AGENTS.md#2-state)과 `pm_agent/state.py`가 기준입니다.
 
 ## 5. 분석 규칙 (위험 요소 판정 기준)
 
@@ -130,6 +120,7 @@ publish:
 ```
 - 팀장은 GitHub 알림 → Actions 화면에서 리포트 미리보기(Job Summary)를 보고 **Approve / Reject**를 누릅니다.
 - 서버나 DB 없이도 사람 승인 단계를 만들 수 있습니다.
+- **승인 마감**: `config.yaml`의 `approval_deadline_kst`(기본 12:00)까지 승인되지 않으면 publish가 발송하지 않고 끝납니다. 오후에 도착하는 "어제 리포트"를 막기 위해서입니다.
 - ✅ team-pm-agent는 **public** 저장소라 Environment 보호 규칙을 쓸 수 있습니다(시크릿은 public이어도 노출되지 않음). 설정이 막히면 아래 대안을 씁니다.
 
 ### 6.2 대안: 이슈 코멘트 승인 (어떤 요금제에서도 동작)
@@ -143,95 +134,62 @@ publish:
 
 ## 7. GitHub Actions 워크플로 (09)
 
-```yaml
-name: daily-scrum
-on:
-  schedule:
-    - cron: "7 23 * * 0-4"   # UTC 일~목 23:07 = KST 월~금 08:07
-  workflow_dispatch:
-    inputs:
-      since:
-        description: "분석 기간 (예: 1d, 7d)"
-        default: "1d"
+파일: [`.github/workflows/daily-scrum.yml`](../.github/workflows/daily-scrum.yml), [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 
-jobs:
-  generate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install -r requirements.txt
-      - run: python -m pm_agent.run --since ${{ inputs.since || '1d' }}
-        env:
-          TEAM_REPO: ${{ vars.TEAM_REPO }}
-          GH_READ_TOKEN: ${{ secrets.GH_READ_TOKEN }}   # fine-grained PAT, 읽기 전용
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      - run: cat report.md >> "$GITHUB_STEP_SUMMARY"  # 승인자 미리보기
-      - uses: actions/upload-artifact@v4
-        with: { name: report, path: report.md }
+| 항목 | 내용 |
+|---|---|
+| 스케줄 | `7 23 * * 0-4` = KST 월~금 08:07 (정각을 피해 지연 방지) |
+| 수동 실행 입력 | `since`(1d/7d), `fixture`(가상 팀 시연), `dry_run`(테스트 채널로 발송, 기본 true) |
+| generate job | 수집 → 그래프 실행 → `report.md`를 Job Summary에 표시 → artifact 업로드 |
+| publish job | `environment: daily-report` 승인 대기 → 승인 마감 확인 → Discord 발송 |
+| ci.yml | push마다 테스트 57개 + fixture 5종 데모 실행 (API 키 불필요) |
 
-  publish:
-    needs: generate
-    runs-on: ubuntu-latest
-    environment: daily-report
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with: { name: report }
-      - run: python -m pm_agent.publish report.md
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-```
+**Secrets / Variables**
 
-- cron을 정각이 아닌 **:07분**으로 잡아 GitHub 스케줄러가 몰리는 시간대의 지연을 피합니다.
-- 토큰 권한: Contents, Pull requests, Issues, Actions의 **Read-only** 권한만 줍니다.
+| 종류 | 이름 | 설명 |
+|---|---|---|
+| Secret | `GH_READ_TOKEN` | 팀 저장소 읽기 전용 fine-grained PAT (Contents, Pull requests, Issues, Actions, Metadata: Read-only) |
+| Secret | `OPENAI_API_KEY` 또는 `ANTHROPIC_API_KEY` | 실제 LLM을 쓸 때 |
+| Secret | `DISCORD_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL_TEST` | 팀 채널, 테스트 채널 |
+| Variable | `TEAM_REPO` | `소유자/저장소` (없으면 `config.yaml` 값) |
+| Variable | `LLM_PROVIDER`, `LLM_MODEL` | `fake` / `openai` / `anthropic`, 모델 이름 |
 
 ## 8. 리포트 예시
 
-```markdown
-# 📋 데일리 스크럼 — 2026-09-30 (화)
+가상 팀(해든·민수·지우·서연, `demo-team/campus-market`)으로 만든 실제 출력입니다.
 
-## 🚨 위험 요소
-- 🔴 **main 빌드 실패** — `test_auth_refresh` 최근 5회 중 3회 실패 (flaky 의심) [run #142]
-- 🟠 PR #37 "결제 모듈 리팩터링" 리뷰 없이 52시간 [@민수]
-
-## 👤 팀원별
-### 해든
-- 어제: PR #35 머지 (로그인 API), 커밋 4건
-- 오늘: 이슈 #41 "토큰 갱신 버그" (할당), PR #37 리뷰 요청 받음
-### 민수 …
-
-## 📈 요약
-커밋 12 · 머지 PR 3 · 새 이슈 2 · CI 성공률 78%
-```
+| 시나리오 | 실행 경로 | 결과 |
+|---|---|---|
+| [normal_day](../examples/normal_day.md) | supervisor → pr_analyst → summarizer | 리뷰 대기 PR 1건 |
+| [risky_day](../examples/risky_day.md) | pr_analyst → issue_analyst → summarizer | 방치 PR, 막힌 이슈, 담당자 없는 버그 등 4건 |
+| [ci_flaky](../examples/ci_flaky.md) | ci_analyst → **ci_diagnoser (Handoff)** → summarizer | main 빌드 실패, 반복 실패, flaky + 진단 |
+| [quiet_day](../examples/quiet_day.md) | supervisor → quiet_report | 특이사항 없음 |
+| [monday](../examples/monday.md) | supervisor → summarizer | 금~월 72시간 범위 |
 
 ## 9. 폴더 구조
 
 ```
 team-pm-agent/
-├─ .github/workflows/daily-scrum.yml
-├─ .github/workflows/approve-by-comment.yml   # 대안 승인(6.2)
+├─ .github/workflows/
+│  ├─ daily-scrum.yml       # 스케줄 실행 + 승인 + 발송
+│  └─ ci.yml                # push 마다 테스트
 ├─ pm_agent/
-│  ├─ run.py            # 진입점: 그래프 실행 → report.md
-│  ├─ graph.py          # StateGraph 조립
-│  ├─ state.py
-│  ├─ collector/github.py   # REST/GraphQL 호출, 페이지네이션
-│  ├─ rules.py          # 5장의 판정 규칙 (순수 함수, 단위 테스트 대상)
-│  ├─ agents/
-│  │  ├─ supervisor.py
-│  │  ├─ pr_analyst.py
-│  │  ├─ ci_analyst.py
-│  │  ├─ issue_analyst.py
-│  │  ├─ ci_diagnoser.py
-│  │  └─ summarizer.py
+│  ├─ run.py                # 진입점: 그래프 실행 → report.md / report.json
+│  ├─ graph.py              # StateGraph 조립, ::group:: 로깅
+│  ├─ state.py · models.py · config.py
+│  ├─ collector/            # github.py(API), normalize.py, window.py(기간), logparse.py(실패 테스트)
+│  ├─ rules.py              # 5장 판정 규칙 + 팀원별 근거 + 통계 (LLM 없음)
+│  ├─ llm.py                # FakeLLM(오프라인) / LangChainLLM(OpenAI·Anthropic)
+│  ├─ agents/               # supervisor.py, analysts.py(PR·이슈·CI·진단), summarizer.py(요약·검증·템플릿)
 │  ├─ prompts/*.md
-│  └─ publish.py        # Discord 웹훅 (2000자 제한 → 분할 전송)
-├─ fixtures/            # 녹화된 GitHub API 응답 (오프라인 개발·테스트)
-├─ tests/
-├─ config.yaml          # 팀원 매핑(login→이름), 임계값
-├─ requirements.txt
-└─ README.md
+│  ├─ templates/report.md.j2
+│  ├─ render.py             # ref → GitHub 링크
+│  └─ publish.py            # Discord 분할 전송, 429 재시도, 승인 마감
+├─ fixtures/                # 가상 팀 시나리오 5종 (scripts/make_fixtures.py 로 생성)
+├─ examples/                # fixture 별 리포트 출력 예시
+├─ tests/                   # 57개 테스트
+├─ config.yaml              # 팀원 매핑, 임계값, LLM, 승인 마감
+└─ requirements.txt · requirements-llm.txt
 ```
 
 ## 10. 일정 (7단계)
@@ -248,6 +206,8 @@ team-pm-agent/
 
 > 마감일에 맞춰 D6을 빼거나 D1~D2를 합칠 수 있습니다. **D5까지 끝나면 MVP 완성**입니다.
 
+**구현 현황 (2026-09-29)**: D1~D6 코드는 가상 팀 데이터로 구현·테스트 완료(테스트 57개 통과). 남은 일은 실제 팀 저장소 연결(토큰, `config.yaml` 팀원 매핑), 실제 LLM 연결, Environment·Discord 설정, D7 운영입니다.
+
 ## 11. 리스크와 대응
 
 | 리스크 | 영향 | 대응 |
@@ -259,6 +219,8 @@ team-pm-agent/
 | CI 로그가 너무 큼 | 토큰 비용 증가 | 실패 step의 마지막 N줄만 추출 |
 | Actions cron 지연·누락 | 발송 시각이 흔들림 | :07분 스케줄, `workflow_dispatch`로 수동 실행 |
 | Discord 메시지 2000자 제한 | 발송 실패 | 섹션 단위로 나눠 여러 번 전송 |
+| 팀장 승인이 늦어짐 | 오후에 지난 리포트가 발송됨 | 승인 마감(기본 12:00 KST) 이후에는 발송하지 않음 |
+| 팀 저장소에 CI가 없음 | CI 분석·Handoff 장면이 사라짐 | 가상 팀 `ci_flaky` fixture로 시연, 팀 저장소에 기본 CI 추가 제안 |
 
 ## 12. 시연 시나리오 (발표용)
 
@@ -271,10 +233,11 @@ team-pm-agent/
 ## 13. 결정이 필요한 사항
 
 - [ ] 팀 채널: **Discord**(웹훅이 가장 간단) / Slack / 기타
-- [ ] LLM 공급자와 모델 (강의에서 쓴 것에 맞추기)
+- [ ] LLM 공급자와 모델 (코드는 `fake` / `openai` / `anthropic` 모두 지원, 선택만 하면 됨)
 - [x] team-pm-agent 저장소 공개 여부 → public, Environment 승인 사용
 - [ ] 팀 저장소 소유 형태(개인/Organization) → PAT 승인 필요 여부
 - [ ] 제출 마감일 → 일정 압축 여부
-- [ ] 팀원 GitHub login 목록 (config 매핑용)
+- [ ] 팀원 GitHub login 목록 (지금은 가상 팀원 해든·민수·지우·서연으로 설정됨)
+- [ ] 팀 저장소의 CI 유무와 테스트 도구 (pytest / Jest / JUnit → `test_log_pattern`)
 
 > 참고: 07 과정 실습 코드는 이번에 열람하지 않아서, 그래프 구성은 LangGraph `StateGraph` + `Command` 기준으로 잡았습니다. 강의 코드 스타일이 다르면 그에 맞춰 조정합니다.

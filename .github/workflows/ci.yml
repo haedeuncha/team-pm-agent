@@ -1,0 +1,26 @@
+# push 마다 단위·계약·그래프 테스트 (API 키·네트워크 불필요, docs/TEST_PLAN.md 1장)
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - name: Demo run on every fixture (fake LLM)
+        run: |
+          for f in normal_day risky_day ci_flaky quiet_day monday; do
+            python -m pm_agent.run --fixture fixtures/$f.json --llm fake --out /tmp/$f.md
+          done

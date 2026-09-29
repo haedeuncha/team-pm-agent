@@ -1,0 +1,160 @@
+{
+  "repo": "demo-team/campus-market",
+  "default_branch": "main",
+  "since": "2026-09-28T23:07:00Z",
+  "until": "2026-09-29T23:07:00Z",
+  "commits": [],
+  "pull_requests": [],
+  "issues": [],
+  "open_assigned": {
+    "haeden": [
+      {
+        "number": 41,
+        "title": "리프레시 토큰 갱신 버그",
+        "state": "open",
+        "labels": [
+          "bug"
+        ],
+        "assignees": [
+          "haeden"
+        ],
+        "created_at": "2026-09-28T17:07:00Z",
+        "updated_at": "2026-09-28T17:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-29T03:07:00Z",
+        "last_linked_activity": "2026-09-29T18:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/41"
+      }
+    ],
+    "minsu": [
+      {
+        "number": 43,
+        "title": "결제 취소 API",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "minsu"
+        ],
+        "created_at": "2026-09-27T21:07:00Z",
+        "updated_at": "2026-09-27T21:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-28T17:07:00Z",
+        "last_linked_activity": "2026-09-29T13:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/43"
+      }
+    ],
+    "jiwoo": [
+      {
+        "number": 42,
+        "title": "상품 목록 무한 스크롤",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "jiwoo"
+        ],
+        "created_at": "2026-09-28T07:07:00Z",
+        "updated_at": "2026-09-28T07:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-28T21:07:00Z",
+        "last_linked_activity": "2026-09-29T20:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/42"
+      }
+    ],
+    "seoyeon": [
+      {
+        "number": 44,
+        "title": "채팅 읽음 표시",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "seoyeon"
+        ],
+        "created_at": "2026-09-27T11:07:00Z",
+        "updated_at": "2026-09-27T11:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-28T07:07:00Z",
+        "last_linked_activity": "2026-09-29T15:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/44"
+      }
+    ]
+  },
+  "open_unassigned_bugs": [],
+  "ci_runs": [
+    {
+      "run_id": 9110,
+      "run_number": 110,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "00aa0bb",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-24T23:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9110"
+    },
+    {
+      "run_id": 9111,
+      "run_number": 111,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "01aa1bb",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-25T09:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9111"
+    },
+    {
+      "run_id": 9112,
+      "run_number": 112,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "02aa2bb",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-25T19:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9112"
+    },
+    {
+      "run_id": 9113,
+      "run_number": 113,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "03aa3bb",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-26T05:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9113"
+    },
+    {
+      "run_id": 9114,
+      "run_number": 114,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "04aa4bb",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-26T15:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9114"
+    }
+  ],
+  "unmapped_commits": 0
+}

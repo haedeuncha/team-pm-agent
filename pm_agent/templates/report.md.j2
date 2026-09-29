@@ -1,0 +1,62 @@
+# 📋 데일리 스크럼 — {{ r.date }}
+{% if r.notice %}
+> {{ r.notice }}
+{% endif %}
+
+**{{ r.headline }}**
+
+## 🚨 위험 요소
+{% if not r.risks %}
+- 없음 ✅
+{% endif %}
+{% for f in r.risks %}
+- {{ icon[f.severity] }} **{{ f.title }}**{% if f.owner %} · {{ name(f.owner) }}{% endif %} {{ f.refs | refs }}
+  - {{ f.explanation }}
+  - 👉 {{ f.suggested_action }}
+{% endfor %}
+{% if r.diagnosis %}
+
+## 🩺 CI 진단 — `{{ r.diagnosis.test }}`
+- 유형: **{{ r.diagnosis.pattern }}**
+- 가설: {{ r.diagnosis.hypothesis }}
+{% if r.diagnosis.suspect_commit %}
+- 의심 커밋: {{ ("[" ~ r.diagnosis.suspect_commit ~ "]") | links }}
+{% endif %}
+- 다음 행동: {{ r.diagnosis.next_step }}
+```
+{% for line in r.diagnosis.evidence_lines %}
+{{ line }}
+{% endfor %}
+```
+{% endif %}
+
+## 👤 팀원별
+{% for m in r.members %}
+### {{ name(m.member) }}
+{% if m.note and not m.yesterday and not m.today %}
+- {{ m.note }}
+{% else %}
+- **어제**
+{% for line in m.yesterday %}
+  - {{ line | links }}
+{% else %}
+  - 기록 없음
+{% endfor %}
+- **오늘**
+{% for line in m.today %}
+  - {{ line | links }}
+{% else %}
+  - 할당된 작업 없음
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+## 📈 요약
+커밋 {{ r.stats.commits }} · 머지 PR {{ r.stats.merged_prs }} · 새 PR {{ r.stats.opened_prs }} · 새 이슈 {{ r.stats.new_issues }} · 닫힌 이슈 {{ r.stats.closed_issues }} · CI 성공률 {{ r.stats.ci_success_rate }}{% if r.stats.unmapped_commits %} · 매핑되지 않은 커밋 {{ r.stats.unmapped_commits }}건{% endif %}
+
+{% if warnings %}
+
+_⚙️ {{ warnings | join(" / ") }}_
+{% endif %}
+
+_🤖 team-pm-agent · {{ repo }} · 틀린 내용은 ❌ 반응으로 알려 주세요_

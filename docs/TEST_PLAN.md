@@ -2,6 +2,19 @@
 
 > 관련 문서: [REQUIREMENTS](REQUIREMENTS.md) · [DATA_SPEC](DATA_SPEC.md) · [AGENTS](AGENTS.md)
 
+## 0. 구현 현황
+
+| 파일 | 대상 | 개수 |
+|---|---|---|
+| `tests/test_collector.py` | TC-COL-01~09 (+ 429 대기, Jest/JUnit 패턴) | 14 |
+| `tests/test_collect_api.py` | 가짜 GitHub API로 `collect()` 전체 배선 | 1 |
+| `tests/test_rules.py` | TC-RULE 전체 경계값, 임계값 설정, 근거 데이터 | 14 |
+| `tests/test_graph.py` | TC-GRAPH-01~07, TC-AGT-01·04, 모든 줄 근거 링크(TC-EVAL-01 자동화) | 16 |
+| `tests/test_validator.py` | TC-AGT-02~06, V4 | 7 |
+| `tests/test_publish.py` | TC-PUB-01·02, 승인 마감 | 5 |
+
+`python -m pytest -q` → **57 passed** (API 키·네트워크 불필요). TC-E2E, TC-EVAL(수동 지표)은 실제 저장소 연결 후 진행합니다.
+
 ## 1. 테스트 전략
 
 | 단계 | 대상 | 방법 | LLM | 네트워크 | 실행 시점 |
@@ -83,7 +96,7 @@
 
 ## 4. E2E 테스트 (Actions)
 
-`workflow_dispatch` 입력에 `dry_run: true`를 주면 publish job이 Discord 대신 **테스트 채널 웹훅**(`DISCORD_WEBHOOK_URL_TEST`)으로 보냅니다.
+`workflow_dispatch` 입력의 `dry_run`(기본 true)이나 `fixture`를 주면 publish job이 Discord 대신 **테스트 채널 웹훅**(`DISCORD_WEBHOOK_URL_TEST`)으로 보냅니다.
 
 | ID | 절차 | 기대 결과 |
 |---|---|---|

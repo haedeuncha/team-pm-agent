@@ -1,0 +1,260 @@
+{
+  "repo": "demo-team/campus-market",
+  "default_branch": "main",
+  "since": "2026-09-28T23:07:00Z",
+  "until": "2026-09-29T23:07:00Z",
+  "commits": [
+    {
+      "sha": "d4e5f6b",
+      "author": "haeden",
+      "message": "토큰 갱신 로직 수정 (#41)",
+      "committed_at": "2026-09-29T13:07:00Z",
+      "url": "https://github.com/demo-team/campus-market/commit/d4e5f6b",
+      "issue_refs": [
+        41
+      ]
+    },
+    {
+      "sha": "e5f6a7b",
+      "author": "jiwoo",
+      "message": "무한 스크롤 IntersectionObserver 적용 (#42)",
+      "committed_at": "2026-09-29T20:07:00Z",
+      "url": "https://github.com/demo-team/campus-market/commit/e5f6a7b",
+      "issue_refs": [
+        42
+      ]
+    }
+  ],
+  "pull_requests": [
+    {
+      "number": 38,
+      "title": "채팅 알림 구독 해제",
+      "author": "seoyeon",
+      "state": "merged",
+      "draft": false,
+      "created_at": "2026-09-29T01:07:00Z",
+      "updated_at": "2026-09-29T05:07:00Z",
+      "merged_at": "2026-09-29T07:07:00Z",
+      "requested_reviewers": [],
+      "reviews": [
+        {
+          "reviewer": "haeden",
+          "state": "APPROVED",
+          "submitted_at": "2026-09-29T06:07:00Z"
+        }
+      ],
+      "commits": [
+        {
+          "sha": "c333333",
+          "author": "seoyeon",
+          "message": "로그아웃 시 알림 구독 해제 (#44)",
+          "committed_at": "2026-09-29T02:07:00Z",
+          "url": "https://github.com/demo-team/campus-market/commit/c333333",
+          "issue_refs": [
+            44
+          ]
+        }
+      ],
+      "closes_issues": [],
+      "url": "https://github.com/demo-team/campus-market/pull/38"
+    }
+  ],
+  "issues": [],
+  "open_assigned": {
+    "haeden": [
+      {
+        "number": 41,
+        "title": "리프레시 토큰 갱신 버그",
+        "state": "open",
+        "labels": [
+          "bug"
+        ],
+        "assignees": [
+          "haeden"
+        ],
+        "created_at": "2026-09-28T17:07:00Z",
+        "updated_at": "2026-09-28T17:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-29T03:07:00Z",
+        "last_linked_activity": "2026-09-29T18:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/41"
+      }
+    ],
+    "minsu": [
+      {
+        "number": 43,
+        "title": "결제 취소 API",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "minsu"
+        ],
+        "created_at": "2026-09-27T21:07:00Z",
+        "updated_at": "2026-09-27T21:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-28T17:07:00Z",
+        "last_linked_activity": "2026-09-29T13:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/43"
+      }
+    ],
+    "jiwoo": [
+      {
+        "number": 42,
+        "title": "상품 목록 무한 스크롤",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "jiwoo"
+        ],
+        "created_at": "2026-09-28T07:07:00Z",
+        "updated_at": "2026-09-28T07:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-28T21:07:00Z",
+        "last_linked_activity": "2026-09-29T20:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/42"
+      }
+    ],
+    "seoyeon": [
+      {
+        "number": 44,
+        "title": "채팅 읽음 표시",
+        "state": "open",
+        "labels": [
+          "feature"
+        ],
+        "assignees": [
+          "seoyeon"
+        ],
+        "created_at": "2026-09-27T11:07:00Z",
+        "updated_at": "2026-09-27T11:07:00Z",
+        "closed_at": null,
+        "closed_by": null,
+        "assigned_at": "2026-09-28T07:07:00Z",
+        "last_linked_activity": "2026-09-29T15:07:00Z",
+        "url": "https://github.com/demo-team/campus-market/issues/44"
+      }
+    ]
+  },
+  "open_unassigned_bugs": [],
+  "ci_runs": [
+    {
+      "run_id": 9139,
+      "run_number": 139,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "a0a0a0a",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-26T15:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9139"
+    },
+    {
+      "run_id": 9140,
+      "run_number": 140,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "a111111",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-27T11:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9140"
+    },
+    {
+      "run_id": 9141,
+      "run_number": 141,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "b222222",
+      "event": "push",
+      "conclusion": "failure",
+      "created_at": "2026-09-28T07:07:00Z",
+      "actor": "haeden",
+      "jobs": [
+        {
+          "job_id": 1,
+          "name": "test (3.12)",
+          "conclusion": "failure",
+          "failed_step": "Run pytest",
+          "failed_tests": [
+            "tests/test_auth.py::test_refresh"
+          ],
+          "log_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.6, pytest-8.3.3\ncollected 48 items\n\ntests/test_auth.py ....F.....                                            [ 20%]\ntests/test_chat.py ...........                                           [ 43%]\ntests/test_market.py ...........................                         [100%]\n\n=================================== FAILURES ===================================\n_________________________________ test_refresh _________________________________\n\n    def test_refresh(client, issued_token):\n        time.sleep(1.2)\n>       assert client.refresh(issued_token).status_code == 200\nE       AssertionError: assert 401 == 200\nE        +  where 401 = <Response [401]>.status_code\n\ntests/test_auth.py:57: AssertionError\n------------------------------ Captured log call -------------------------------\nWARNING  auth.service:service.py:88 token expired: exp=1759187231 now=1759187232\n=========================== short test summary info ============================\nFAILED tests/test_auth.py::test_refresh - AssertionError: assert 401 == 200\n========================= 1 failed, 47 passed in 6.21s =========================\nError: Process completed with exit code 1."
+        }
+      ],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9141"
+    },
+    {
+      "run_id": 9142,
+      "run_number": 142,
+      "workflow": "CI",
+      "branch": "feature/chat-unsubscribe",
+      "head_sha": "c333333",
+      "event": "push",
+      "conclusion": "failure",
+      "created_at": "2026-09-29T03:07:00Z",
+      "actor": "seoyeon",
+      "jobs": [
+        {
+          "job_id": 2,
+          "name": "test (3.12)",
+          "conclusion": "failure",
+          "failed_step": "Run pytest",
+          "failed_tests": [
+            "tests/test_auth.py::test_refresh"
+          ],
+          "log_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.6, pytest-8.3.3\ncollected 48 items\n\ntests/test_auth.py ....F.....                                            [ 20%]\ntests/test_chat.py ...........                                           [ 43%]\ntests/test_market.py ...........................                         [100%]\n\n=================================== FAILURES ===================================\n_________________________________ test_refresh _________________________________\n\n    def test_refresh(client, issued_token):\n        time.sleep(1.2)\n>       assert client.refresh(issued_token).status_code == 200\nE       AssertionError: assert 401 == 200\nE        +  where 401 = <Response [401]>.status_code\n\ntests/test_auth.py:57: AssertionError\n------------------------------ Captured log call -------------------------------\nWARNING  auth.service:service.py:88 token expired: exp=1759187231 now=1759187232\n=========================== short test summary info ============================\nFAILED tests/test_auth.py::test_refresh - AssertionError: assert 401 == 200\n========================= 1 failed, 47 passed in 6.21s =========================\nError: Process completed with exit code 1."
+        }
+      ],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9142"
+    },
+    {
+      "run_id": 9143,
+      "run_number": 143,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "d4e5f6b",
+      "event": "push",
+      "conclusion": "success",
+      "created_at": "2026-09-29T13:07:00Z",
+      "actor": "haeden",
+      "jobs": [],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9143"
+    },
+    {
+      "run_id": 9144,
+      "run_number": 144,
+      "workflow": "CI",
+      "branch": "main",
+      "head_sha": "d4e5f6b",
+      "event": "push",
+      "conclusion": "failure",
+      "created_at": "2026-09-29T14:07:00Z",
+      "actor": "haeden",
+      "jobs": [
+        {
+          "job_id": 3,
+          "name": "test (3.12)",
+          "conclusion": "failure",
+          "failed_step": "Run pytest",
+          "failed_tests": [
+            "tests/test_auth.py::test_refresh"
+          ],
+          "log_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.6, pytest-8.3.3\ncollected 48 items\n\ntests/test_auth.py ....F.....                                            [ 20%]\ntests/test_chat.py ...........                                           [ 43%]\ntests/test_market.py ...........................                         [100%]\n\n=================================== FAILURES ===================================\n_________________________________ test_refresh _________________________________\n\n    def test_refresh(client, issued_token):\n        time.sleep(1.2)\n>       assert client.refresh(issued_token).status_code == 200\nE       AssertionError: assert 401 == 200\nE        +  where 401 = <Response [401]>.status_code\n\ntests/test_auth.py:57: AssertionError\n------------------------------ Captured log call -------------------------------\nWARNING  auth.service:service.py:88 token expired: exp=1759187231 now=1759187232\n=========================== short test summary info ============================\nFAILED tests/test_auth.py::test_refresh - AssertionError: assert 401 == 200\n========================= 1 failed, 47 passed in 6.21s =========================\nError: Process completed with exit code 1."
+        }
+      ],
+      "url": "https://github.com/demo-team/campus-market/actions/runs/9144"
+    }
+  ],
+  "unmapped_commits": 0
+}

@@ -2,7 +2,9 @@
 
 > 그래프 구성, 에이전트별 입력·출력 계약, 프롬프트, 실패 처리를 정의합니다.
 > 관련 문서: [DATA_SPEC](DATA_SPEC.md) · [TEST_PLAN](TEST_PLAN.md)
-> 전제: LangGraph `StateGraph` + `Command`, LLM은 `with_structured_output(Pydantic)`으로 호출 (공급자는 미정)
+> 전제: LangGraph `StateGraph` + `Command`, LLM은 `with_structured_output(Pydantic)`으로 호출
+> LLM 공급자: `fake`(오프라인, 기본값) / `openai` / `anthropic` — `pm_agent/llm.py`
+> 구현: `pm_agent/graph.py`, `pm_agent/agents/`, 실행 경로 확인은 `python -m pm_agent.run --graph`
 
 ## 1. 그래프
 
@@ -18,7 +20,7 @@ flowchart TD
   supervisor -->|quiet| quiet_report
   pr_analyst --> supervisor
   issue_analyst --> supervisor
-  ci_analyst -->|Command goto| ci_diagnoser
+  ci_analyst -->|LLM이 handoff 판단| ci_diagnoser
   ci_analyst --> supervisor
   ci_diagnoser --> supervisor
   summarizer --> validator
@@ -45,20 +47,22 @@ flowchart TD
 ## 2. State
 
 ```python
-class PMState(TypedDict):
-    config: Config
+class PMState(TypedDict, total=False):
     raw: RawActivity
-    candidates: list[RiskCandidate]            # rule_engine 결과
-    digests: dict[str, MemberDigest]           # rule_engine이 함께 계산
-    todo_areas: list[Literal["pr", "ci", "issue"]]
+    candidates: list[RiskCandidate]                  # rule_engine 결과
+    digests: dict[str, MemberDigest]                 # rule_engine이 함께 계산
+    active_areas: list[str]                          # 기간 안에 변화가 있던 영역
     done_areas: Annotated[list[str], operator.add]
     findings: Annotated[list[Finding], operator.add]
+    handoff_payload: dict | None                     # ci_analyst → ci_diagnoser
     diagnosis: Diagnosis | None
     report: Report | None
     report_md: str
     validation_errors: list[str]
-    attempts: int                              # summarizer 재시도 횟수
-    hops: int                                  # supervisor 방문 횟수
+    attempts: int                                    # summarizer 시도 횟수
+    hops: int                                        # supervisor 방문 횟수
+    warnings: Annotated[list[str], operator.add]
+    trace: Annotated[list[str], operator.add]        # 실행한 노드 순서 (TC-GRAPH)
 ```
 
 ### 공통 타입
@@ -67,13 +71,23 @@ class PMState(TypedDict):
 Severity = Literal["critical", "high", "medium", "low"]
 
 class RiskCandidate(BaseModel):     # 규칙이 만든 후보 (LLM 이전)
+    id: str                         # "c1", "c2" ... Agent가 이 id로 응답
     rule_id: str                    # "R-PR-STALE" 등, TEST_PLAN과 동일
     area: Literal["pr", "ci", "issue"]
     severity: Severity
     refs: list[str]                 # DATA_SPEC 6장 ref 형식
+    owner: str | None               # 팀원 key
     facts: dict                     # {"hours_without_review": 52, ...}
 
-class Finding(BaseModel):           # 분석 Agent의 출력 단위
+class FindingDraft(BaseModel):      # LLM이 채우는 부분 (structured output)
+    candidate_id: str
+    severity: Severity
+    title: str
+    explanation: str
+    suggested_action: str
+
+class Finding(BaseModel):           # 코드가 후보 정보와 합쳐 완성
+    candidate_id: str
     rule_id: str                    # 반드시 candidates 중 하나
     area: Literal["pr", "ci", "issue"]
     severity: Severity
@@ -88,19 +102,20 @@ class Finding(BaseModel):           # 분석 Agent의 출력 단위
 
 ```python
 def supervisor(state) -> Command:
-    if state["hops"] >= 6:
-        return Command(goto="summarizer")
-    changed = areas_with_activity(state["raw"], state["candidates"])
-    if not changed and not state["candidates"]:
-        return Command(goto="quiet_report")
-    remaining = [a for a in changed if a not in state["done_areas"]]
+    hops = state.get("hops", 0) + 1
+    if hops > cfg.max_hops:                                   # 무한 루프 방지
+        return Command(goto="summarizer", update={...})
+    if not state["candidates"] and not state["active_areas"]:
+        return Command(goto="quiet_report", update={...})
+    todo = {c.area for c in state["candidates"]}
+    remaining = [a for a in ["ci", "pr", "issue"] if a in todo and a not in state["done_areas"]]
     if not remaining:
-        return Command(goto="summarizer")
-    return Command(goto=f"{remaining[0]}_analyst",
-                   update={"hops": state["hops"] + 1})
+        return Command(goto="summarizer", update={...})
+    return Command(goto=f"{remaining[0]}_analyst", update={"hops": hops})
 ```
 
-- `areas_with_activity`: PR 생성·갱신·리뷰가 있으면 `pr`, 실패한 CI 실행이 있으면 `ci`, 이슈 변경이 있거나 이슈 관련 후보가 있으면 `issue`로 판단합니다.
+- 분석 대상은 **위험 후보가 있는 영역**입니다. 변화는 있었지만 후보가 없는 영역에는 LLM을 부르지 않습니다.
+- `active_areas`(기간 안의 PR·CI·이슈 변화)는 "특이사항 없음" 판단에만 씁니다.
 - 우선순위: `ci` → `pr` → `issue` (main 빌드 실패가 가장 급하므로).
 
 ## 4. 분석 Agent 공통 계약
@@ -108,8 +123,9 @@ def supervisor(state) -> Command:
 | 항목 | 내용 |
 |---|---|
 | 입력 | 담당 영역의 `candidates` + 관련 `raw` 부분집합(해당 ref의 제목·시각·로그 조각만) |
-| 출력 | `list[Finding]` (structured output) |
+| 출력 | `AnalysisResult(findings: list[FindingDraft])` (structured output) → 코드가 `enforce_contract`로 `Finding` 완성 |
 | 규칙 | ① 후보마다 **정확히 하나의** Finding을 만든다. ② 새 `rule_id`나 새 `ref`를 만들지 않는다. ③ 심각도는 규칙이 정한 값을 **한 단계까지만** 올리거나 내릴 수 있고, 그 이유를 explanation에 쓴다. |
+| 계약 강제 | 모르는 id·중복은 버리고, 빠진 후보는 규칙 템플릿으로 채우고, 심각도는 한 단계로 잘라냄 (`clamp_severity`) |
 | 종료 | `done_areas`에 자기 영역 추가 → supervisor로 복귀 |
 
 ### 4.1 `pr_analyst`
@@ -122,13 +138,15 @@ def supervisor(state) -> Command:
 
 ### 4.3 `ci_analyst` + Handoff (05)
 - 추가 입력: 실패한 job 이름, `failed_step`, `failed_tests`, 로그 마지막 50줄
-- **Handoff 조건**: `R-CI-REPEAT`(같은 테스트 5회 중 3회 이상 실패) 또는 `R-CI-FLAKY` 후보가 있을 때
+- **Handoff 판단은 에이전트가 합니다.** 출력 스키마 `CIAnalysisResult`에 `handoff_to_diagnoser: bool`, `handoff_reason: str`이 있고, 프롬프트(`prompts/ci_extra.md`)가 "반복 실패나 flaky 후보가 있고 로그만으로 원인을 설명하기 어려우면 넘겨라"라고 안내합니다.
+- 코드 가드: 에이전트가 넘기기로 했더라도 `R-CI-REPEAT`/`R-CI-FLAKY` 후보(대상 테스트)가 없으면 넘기지 않습니다.
 
 ```python
-if needs_diagnosis(candidates):
-    return Command(goto="ci_diagnoser",
-                   update={"findings": findings,
-                           "handoff_payload": build_payload(candidates, raw)})
+res = llm.structured("ci_analyst", CIAnalysisResult, ...)
+payload = build_handoff_payload(raw, cands) if res.handoff_to_diagnoser else None
+if payload:
+    return Command(goto="ci_diagnoser", update={..., "handoff_payload": payload})
+return Command(goto="supervisor", update={...})
 ```
 
 - `handoff_payload`에는 해당 테스트의 로그 조각(실행당 최대 80줄), 관련 커밋 SHA와 메시지만 담습니다. 전체 state를 넘기지 않아 컨텍스트를 작게 유지합니다.
@@ -193,7 +211,7 @@ RISKS:
 | 검사 | 실패 시 |
 |---|---|
 | V1. Report가 스키마에 맞는가 | 재시도 |
-| V2. 모든 `[ref]`가 `RawActivity`에 존재하는가 | 해당 줄 삭제 후 재시도 요청 |
+| V2. 모든 줄에 `[ref]`가 있고, 그 ref가 `RawActivity`에 존재하며 **그 팀원의 해당 칸(어제/오늘) 근거**인가 | 해당 줄 삭제 후 재시도 요청 |
 | V3. 모든 `candidates`가 `risks`에 하나씩 있는가 (누락 0) | 재시도 |
 | V4. 모든 팀원 섹션이 있는가 | 재시도 |
 | V5. `Diagnosis.evidence_lines`가 로그에 그대로 있는가 | 진단 결과 제외 |
@@ -209,7 +227,7 @@ RISKS:
 | GitHub API 403/429 (한도 초과) | `Retry-After` 또는 `x-ratelimit-reset`까지 대기, 최대 1회 |
 | GitHub API 5xx | 지수 백오프 3회 |
 | 로그 다운로드 실패 | `log_tail=""`, `failed_tests=[]`로 진행 |
-| LLM 호출 실패·타임아웃 | 재시도 2회 → 해당 Agent는 후보를 그대로 Finding으로 변환(설명 없이) |
+| LLM 호출 실패·타임아웃 | 클라이언트 재시도 2회 → 해당 Agent는 규칙 템플릿 문장으로 Finding 생성, 경고 표시 |
 | 그래프 전체 예외 | job 실패 처리 → publish job이 실행되지 않음 → 운영자가 Actions 알림으로 확인 |
 
 ## 8. 로깅 (발표 시연용)

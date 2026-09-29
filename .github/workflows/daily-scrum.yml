@@ -1,0 +1,87 @@
+# 데일리 스크럼 리포트 (docs/PLAN.md 6·7장)
+# generate: 수집 → 멀티 에이전트 → report.md (Job Summary 에서 미리보기)
+# publish : 팀장 승인(Environment: daily-report) → Discord 발송, 승인 마감이 지나면 발송 안 함
+name: daily-scrum
+
+on:
+  schedule:
+    - cron: "7 23 * * 0-4"   # UTC 일~목 23:07 = KST 월~금 08:07
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "분석 기간 (예: 1d, 7d). 비우면 직전 성공 실행 이후"
+        required: false
+        default: ""
+      fixture:
+        description: "가상 팀 시연용 fixture (normal_day / risky_day / ci_flaky / quiet_day / monday). 비우면 실제 팀 저장소"
+        required: false
+        default: ""
+      dry_run:
+        description: "테스트 채널(DISCORD_WEBHOOK_URL_TEST)로 발송"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: read   # 직전 성공 실행 시각 조회
+
+concurrency:
+  group: daily-scrum
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-llm.txt
+      - name: Run PM agent
+        env:
+          TEAM_REPO: ${{ vars.TEAM_REPO }}
+          GH_READ_TOKEN: ${{ secrets.GH_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FIXTURE: ${{ inputs.fixture }}
+          SINCE: ${{ inputs.since }}
+        run: |
+          ARGS=""
+          if [ -n "$FIXTURE" ]; then ARGS="$ARGS --fixture fixtures/$FIXTURE.json"; fi
+          if [ -n "$SINCE" ]; then ARGS="$ARGS --since $SINCE"; fi
+          python -m pm_agent.run $ARGS
+      - name: Preview for approver
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: |
+            report.md
+            report.json
+          retention-days: 14
+
+  publish:
+    needs: generate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: daily-report   # Settings → Environments → Required reviewers = 팀장
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: report
+      - name: Send to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ (inputs.dry_run || inputs.fixture) && secrets.DISCORD_WEBHOOK_URL_TEST || secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m pm_agent.publish report.md
