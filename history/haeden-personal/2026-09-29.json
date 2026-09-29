@@ -1,0 +1,48 @@
+{
+  "skipped": false,
+  "team": "haeden-personal",
+  "repos": [
+    "haedeuncha/team-pm-agent"
+  ],
+  "generated_at": "2026-09-29T08:27:52.927185+00:00",
+  "report_date": "2026-09-29 (화)",
+  "headline": "특별한 위험 없이 순조롭게 진행 중입니다.",
+  "trace": [
+    "collector",
+    "rule_engine",
+    "supervisor",
+    "summarizer",
+    "validator"
+  ],
+  "warnings": [],
+  "risks": 0,
+  "risk_rules": [],
+  "stats": {
+    "commits": 12,
+    "merged_prs": 0,
+    "opened_prs": 0,
+    "new_issues": 0,
+    "closed_issues": 0,
+    "ci_runs": 6,
+    "ci_success_rate": "83%",
+    "unmapped_commits": 0
+  },
+  "window_since": "2026-09-22T08:27:52.927185+00:00",
+  "window_until": "2026-09-29T08:27:52.927185+00:00",
+  "llm": "fake",
+  "model": null,
+  "usage": {
+    "summarizer": {
+      "calls": 1,
+      "input": 894,
+      "output": 0
+    }
+  },
+  "cost_usd": 0.0,
+  "sent_at": "2026-09-29T08:28:51.477030+00:00",
+  "channels": [
+    "discord"
+  ],
+  "failed": [],
+  "run_id": "36542828915"
+}
