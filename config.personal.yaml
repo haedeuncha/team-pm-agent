@@ -1,6 +1,6 @@
 # 개인 테스트용 설정 — 팀 없이 내 저장소 하나로 전체 흐름을 확인할 때 사용
 # 사용법
-#   로컬:    python -m pm_agent.run --config config.personal.yaml --since 7d
+#   로컬:    python -m pm_agent.run --config config.personal.yaml --anonymous --since 7d
 #   Actions: Variables 에 PM_CONFIG = config.personal.yaml
 # 이 저장소(team-pm-agent)를 분석 대상으로 쓰면 별도 토큰 없이 Actions 기본 토큰으로 수집됩니다.
 

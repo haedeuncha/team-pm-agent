@@ -68,6 +68,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--model")
     ap.add_argument("--out", default="report.md")
     ap.add_argument("--scheduled", action="store_true", help="정기 실행: 주말·공휴일이면 건너뜀")
+    ap.add_argument("--anonymous", action="store_true",
+                    help="토큰 없이 공개 저장소 수집 (개인 테스트용, GitHub 한도 시간당 60회)")
     ap.add_argument("--graph", action="store_true", help="그래프 구조(mermaid)만 출력")
     args = ap.parse_args(argv)
 
@@ -98,7 +100,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"📦 fixture 모드: {args.fixture}")
     else:
         token, method = resolve_token(cfg.repos[0].name)
-        if not token:
+        if not token and args.anonymous:
+            method = "anonymous"
+            print("⚠️ 토큰 없이 공개 저장소를 수집합니다 (시간당 60회 한도).")
+        elif not token:
             print("GitHub 인증 정보가 없습니다. GH_READ_TOKEN 또는 GH_APP_ID/GH_APP_PRIVATE_KEY 를 설정하거나 "
                   "--fixture 로 실행하세요.", file=sys.stderr)
             return 2

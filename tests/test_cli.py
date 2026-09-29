@@ -115,3 +115,13 @@ def test_workflow_file_from_env(monkeypatch):
     assert run.workflow_file() == "daily-backend.yml"
     monkeypatch.delenv("GITHUB_WORKFLOW_REF")
     assert run.workflow_file() == "daily-scrum.yml"
+
+
+def test_run_anonymous_mode(monkeypatch, tmp_path, capsys):
+    for k in ("GH_READ_TOKEN", "GH_APP_ID", "GH_APP_PRIVATE_KEY", "SECRETS_JSON"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(run, "GitHubClient", DummyClient)
+    monkeypatch.setattr(run, "make_store", lambda cfg: NullStore())
+    monkeypatch.setattr(run, "collect", lambda cfg, client, since, until: load_fixture(FIX))
+    assert run.main(["--config", CFG, "--anonymous", "--since", "7d", "--out", str(tmp_path / "r.md")]) == 0
+    assert "토큰 없이" in capsys.readouterr().out

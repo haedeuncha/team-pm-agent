@@ -21,7 +21,7 @@
 - [ ] 위험 요소를 보고 싶으면: 나에게 할당한 이슈 만들기, 리뷰어 없는 PR 열어 두기 등
 - [ ] 팀 운영으로 넘어갈 때 `PM_CONFIG` 변수를 지우면 `config.yaml`을 사용
 
-로컬에서 바로 확인: `python -m pm_agent.run --config config.personal.yaml --since 7d`
+로컬에서 바로 확인 (토큰 없이): `python -m pm_agent.run --config config.personal.yaml --anonymous --since 7d`
 
 ## 2. 팀 합의
 
