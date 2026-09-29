@@ -2,6 +2,7 @@
 # generate: 근무일 확인 → 수집 → 멀티 에이전트 → report.md (Job Summary 에서 미리보기)
 # publish : 팀장 승인(Environment) → 승인 마감·중복 확인 → config.yaml 의 모든 채널로 발송 → 이력 기록
 # 여러 팀이면 이 파일을 복사해 PM_CONFIG 와 environment 만 바꾼다 (팀마다 승인자가 다르므로).
+# 보안: 모든 비밀값을 넘기는 toJSON(secrets) 대신 필요한 비밀값만 이름으로 넘긴다.
 name: daily-scrum
 
 on:
@@ -99,7 +100,7 @@ jobs:
       - name: Alert on failure
         if: failure()
         env:
-          SECRETS_JSON: ${{ toJSON(secrets) }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
         run: python -m pm_agent.alert --config "$PM_CONFIG" --stage generate || true
 
   publish:
@@ -123,7 +124,17 @@ jobs:
           name: report
       - name: Send
         env:
-          SECRETS_JSON: ${{ toJSON(secrets) }}   # config.yaml 의 *_env 이름으로 비밀값을 찾음
+          # 채널 비밀값: config.yaml 의 *_env 이름과 같아야 함. 채널을 추가하면 여기에도 한 줄 추가
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL_TEST: ${{ secrets.DISCORD_WEBHOOK_URL_TEST }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL_TEST: ${{ secrets.SLACK_WEBHOOK_URL_TEST }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          TEAMS_WEBHOOK_URL_TEST: ${{ secrets.TEAMS_WEBHOOK_URL_TEST }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
+          REPORT_EMAIL_TO_TEST: ${{ secrets.REPORT_EMAIL_TO_TEST }}
           GITHUB_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ inputs.dry_run || inputs.fixture != '' && inputs.fixture != null }}
         run: |
@@ -133,5 +144,5 @@ jobs:
       - name: Alert on failure
         if: failure()
         env:
-          SECRETS_JSON: ${{ toJSON(secrets) }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
         run: python -m pm_agent.alert --config "$PM_CONFIG" --stage publish || true

@@ -144,7 +144,7 @@ publish:
 | publish job | `environment: daily-report` 승인 대기 → 승인 마감 확인 → Discord 발송 |
 | ci.yml | push마다 테스트 145개(커버리지 95% 미만이면 실패) + fixture 5종 데모 실행 (API 키 불필요) |
 
-**Secrets / Variables**: 인증(GitHub App/PAT), LLM 키, 채널별 비밀값 목록은 [OPERATIONS.md 3·4장](OPERATIONS.md)에 있습니다. 채널 비밀값은 워크플로가 `SECRETS_JSON`으로 넘기므로 `config.yaml`에 채널을 추가해도 워크플로를 고칠 필요가 없습니다.
+**Secrets / Variables**: 인증(GitHub App/PAT), LLM 키, 채널별 비밀값 목록은 [OPERATIONS.md 3·4장](OPERATIONS.md)에 있습니다. 채널 비밀값은 워크플로가 필요한 것만 이름으로 넘깁니다(보안상 `toJSON(secrets)`는 쓰지 않음). 기본 채널 비밀값 이름은 이미 등록돼 있습니다.
 
 ## 8. 리포트 예시
 
@@ -179,7 +179,7 @@ team-pm-agent/
 │  ├─ notify.py             # Discord / Slack / Teams / 메일(SMTP·Gmail)
 │  ├─ store.py              # 상태 저장소 (none / local / github 브랜치)
 │  ├─ workcalendar.py       # 주말·공휴일
-│  ├─ credentials.py        # 비밀값 읽기 (환경 변수 → SECRETS_JSON)
+│  ├─ credentials.py        # 비밀값 읽기 (환경 변수, 선택적으로 SECRETS_JSON)
 │  ├─ prompts/*.md · templates/report.md.j2 · render.py
 ├─ fixtures/ · examples/ · scripts/make_fixtures.py
 ├─ tests/                   # 145개 테스트, 커버리지 99%

@@ -1,7 +1,7 @@
 """비밀값 읽기.
 
-환경 변수를 먼저 보고, 없으면 GitHub Actions 에서 넘겨준 ``SECRETS_JSON``(= ``toJSON(secrets)``)에서 찾는다.
-그래서 config.yaml 에 채널을 추가해도 워크플로 파일을 고칠 필요가 없다.
+환경 변수를 먼저 보고, 없으면 ``SECRETS_JSON``(JSON 문자열, Docker·서버 실행 시 선택)에서 찾는다.
+기본 워크플로는 보안상 필요한 비밀값만 환경 변수로 넘긴다 (``toJSON(secrets)`` 는 GitHub 가 악성 패턴으로 차단).
 """
 from __future__ import annotations
 

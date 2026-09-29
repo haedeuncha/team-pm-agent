@@ -45,7 +45,7 @@ GitHub Enterprise Server는 `config.yaml`의 `github.api_url`에 `https://<호�
 
 ## 4. 발송 채널
 
-`config.yaml`의 `channels`에서 켜고 끕니다. 여러 채널을 동시에 켤 수 있고, 한 채널이 실패해도 나머지는 발송됩니다. 비밀값은 **이름만** 설정 파일에 적고 값은 GitHub Secrets에 넣습니다(워크플로가 `SECRETS_JSON`으로 넘겨주므로 채널을 추가해도 워크플로를 고칠 필요가 없습니다).
+`config.yaml`의 `channels`에서 켜고 끕니다. 여러 채널을 동시에 켤 수 있고, 한 채널이 실패해도 나머지는 발송됩니다. 비밀값은 **이름만** 설정 파일에 적고 값은 GitHub Secrets에 넣습니다. 워크플로(`daily-scrum.yml`)는 보안상 **필요한 비밀값만 이름으로** 넘깁니다. 표의 기본 이름은 이미 등록돼 있고, 다른 이름을 쓰는 채널을 추가하면 워크플로의 `Send` 단계 `env`에도 한 줄 추가하세요. (모든 비밀값을 넘기는 `toJSON(secrets)`는 GitHub가 악성 패턴으로 차단합니다.)
 
 | 채널 | 준비 | Secrets (기본 이름) | 테스트 발송 대상 |
 |---|---|---|---|
