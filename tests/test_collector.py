@@ -114,3 +114,13 @@ def test_col09_closes_issues_from_pr_body(cfg):
     p = pr_from_api(d, cfg)
     assert p.closes_issues == [41, 43]
     assert p.author == "minsu"
+
+
+def test_run_with_unusual_conclusion_is_accepted(cfg):
+    """실데이터 회귀: 승인 대기 중인 실행은 conclusion='action_required' 로 온다."""
+    from pm_agent.collector.normalize import run_from_api
+    for c in ("action_required", "neutral", "stale", "startup_failure", None):
+        r = run_from_api({"id": 1, "run_number": 1, "name": "daily-scrum", "head_branch": "main",
+                          "head_sha": "abcdef1", "event": "workflow_dispatch", "conclusion": c,
+                          "created_at": "2026-09-29T08:00:00Z", "html_url": "u"}, cfg)
+        assert r.conclusion == c

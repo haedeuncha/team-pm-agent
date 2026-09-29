@@ -97,7 +97,9 @@ class CIRun(BaseModel):
     branch: str
     head_sha: str
     event: str = "push"
-    conclusion: Literal["success", "failure", "cancelled", "skipped", "timed_out"] | None = None
+    # GitHub 값: success, failure, cancelled, skipped, timed_out, action_required, neutral, stale,
+    # startup_failure 등. 규칙은 success/failure 만 사용하므로 나머지는 그대로 받아 둔다.
+    conclusion: str | None = None
     created_at: datetime
     actor: str | None = None
     jobs: list[CIJob] = Field(default_factory=list)
