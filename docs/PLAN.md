@@ -2,7 +2,7 @@
 
 > 저장소: [haedeuncha/team-pm-agent](https://github.com/haedeuncha/team-pm-agent) (public, 팀 저장소를 읽기 전용 PAT로 조회)
 > 08 멀티 에이전트 미니 프로젝트 · 작성일 2026-09-29
-> 세부 문서: [REQUIREMENTS](REQUIREMENTS.md) · [DATA_SPEC](DATA_SPEC.md) · [AGENTS](AGENTS.md) · [TEST_PLAN](TEST_PLAN.md)
+> 세부 문서: [REQUIREMENTS](REQUIREMENTS.md) · [DATA_SPEC](DATA_SPEC.md) · [AGENTS](AGENTS.md) · [TEST_PLAN](TEST_PLAN.md) · [OPERATIONS](OPERATIONS.md)
 > 적용 과정: 09 GitHub Actions · 03 Supervisor · 05 Handoff · 06 발송 승인
 
 ---
@@ -142,17 +142,9 @@ publish:
 | 수동 실행 입력 | `since`(1d/7d), `fixture`(가상 팀 시연), `dry_run`(테스트 채널로 발송, 기본 true) |
 | generate job | 수집 → 그래프 실행 → `report.md`를 Job Summary에 표시 → artifact 업로드 |
 | publish job | `environment: daily-report` 승인 대기 → 승인 마감 확인 → Discord 발송 |
-| ci.yml | push마다 테스트 90개(커버리지 95% 미만이면 실패) + fixture 5종 데모 실행 (API 키 불필요) |
+| ci.yml | push마다 테스트 145개(커버리지 95% 미만이면 실패) + fixture 5종 데모 실행 (API 키 불필요) |
 
-**Secrets / Variables**
-
-| 종류 | 이름 | 설명 |
-|---|---|---|
-| Secret | `GH_READ_TOKEN` | 팀 저장소 읽기 전용 fine-grained PAT (Contents, Pull requests, Issues, Actions, Metadata: Read-only) |
-| Secret | `OPENAI_API_KEY` 또는 `ANTHROPIC_API_KEY` | 실제 LLM을 쓸 때 |
-| Secret | `DISCORD_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL_TEST` | 팀 채널, 테스트 채널 |
-| Variable | `TEAM_REPO` | `소유자/저장소` (없으면 `config.yaml` 값) |
-| Variable | `LLM_PROVIDER`, `LLM_MODEL` | `fake` / `openai` / `anthropic`, 모델 이름 |
+**Secrets / Variables**: 인증(GitHub App/PAT), LLM 키, 채널별 비밀값 목록은 [OPERATIONS.md 3·4장](OPERATIONS.md)에 있습니다. 채널 비밀값은 워크플로가 `SECRETS_JSON`으로 넘기므로 `config.yaml`에 채널을 추가해도 워크플로를 고칠 필요가 없습니다.
 
 ## 8. 리포트 예시
 
@@ -171,24 +163,28 @@ publish:
 ```
 team-pm-agent/
 ├─ .github/workflows/
-│  ├─ daily-scrum.yml       # 스케줄 실행 + 승인 + 발송
-│  └─ ci.yml                # push 마다 테스트
+│  ├─ daily-scrum.yml       # 근무일 확인 + 생성 + 승인 + 발송 + 실패 알림
+│  └─ ci.yml                # push 마다 테스트 (커버리지 95% 미만 실패)
 ├─ pm_agent/
 │  ├─ run.py                # 진입점: 그래프 실행 → report.md / report.json
+│  ├─ publish.py            # 승인 마감·중복 확인 → 채널 발송 → 기록
+│  ├─ alert.py              # 실패 알림
 │  ├─ graph.py              # StateGraph 조립, ::group:: 로깅
 │  ├─ state.py · models.py · config.py
-│  ├─ collector/            # github.py(API), normalize.py, window.py(기간), logparse.py(실패 테스트)
-│  ├─ rules.py              # 5장 판정 규칙 + 팀원별 근거 + 통계 (LLM 없음)
-│  ├─ llm.py                # FakeLLM(오프라인) / LangChainLLM(OpenAI·Anthropic)
+│  ├─ collector/            # github.py(API, 여러 저장소), auth.py(GitHub App), normalize.py, window.py, logparse.py
+│  ├─ rules.py              # 판정 규칙 + 팀원별 근거 + 통계 (LLM 없음)
+│  ├─ llm.py                # FakeLLM(오프라인) / LangChainLLM(OpenAI·Anthropic), 비용 추정
 │  ├─ agents/               # supervisor.py, analysts.py(PR·이슈·CI·진단), summarizer.py(요약·검증·템플릿)
-│  ├─ prompts/*.md
-│  ├─ templates/report.md.j2
-│  ├─ render.py             # ref → GitHub 링크
-│  └─ publish.py            # Discord 분할 전송, 429 재시도, 승인 마감
-├─ fixtures/                # 가상 팀 시나리오 5종 (scripts/make_fixtures.py 로 생성)
-├─ examples/                # fixture 별 리포트 출력 예시
-├─ tests/                   # 90개 테스트, 커버리지 99%
-├─ config.yaml              # 팀원 매핑, 임계값, LLM, 승인 마감
+│  ├─ security.py           # 비밀값 가리기, 프롬프트 인젝션 완화
+│  ├─ notify.py             # Discord / Slack / Teams / 메일(SMTP·Gmail)
+│  ├─ store.py              # 상태 저장소 (none / local / github 브랜치)
+│  ├─ workcalendar.py       # 주말·공휴일
+│  ├─ credentials.py        # 비밀값 읽기 (환경 변수 → SECRETS_JSON)
+│  ├─ prompts/*.md · templates/report.md.j2 · render.py
+├─ fixtures/ · examples/ · scripts/make_fixtures.py
+├─ tests/                   # 145개 테스트, 커버리지 99%
+├─ config.yaml              # 팀·저장소·팀원·임계값·채널·근무일·보안
+├─ Dockerfile · .env.example
 └─ requirements.txt · requirements-llm.txt
 ```
 
@@ -206,7 +202,11 @@ team-pm-agent/
 
 > 마감일에 맞춰 D6을 빼거나 D1~D2를 합칠 수 있습니다. **D5까지 끝나면 MVP 완성**입니다.
 
-**구현 현황 (2026-09-29)**: D1~D6 코드는 가상 팀 데이터로 구현·테스트 완료(테스트 90개 통과, 커버리지 99%). 남은 일은 실제 팀 저장소 연결(토큰, `config.yaml` 팀원 매핑), 실제 LLM 연결, Environment·Discord 설정, D7 운영입니다.
+**구현 현황 (2026-09-29)**
+- D1~D6 코드는 가상 팀 데이터로 구현·테스트 완료.
+- 실무 운영 기능 추가: GitHub App 인증, Slack·Teams·메일(Gmail) 채널, 비밀값 가리기, 프롬프트 인젝션 완화, 공휴일 건너뛰기, 중복 발송 방지·이력, 실패 알림, 여러 저장소, GitHub Enterprise, Docker ([OPERATIONS.md](OPERATIONS.md)).
+- 테스트 145개 통과, 커버리지 99%.
+- 남은 일: 실제 팀 저장소·LLM·채널 연결 후 `dry_run` 확인, 회사 도입 시 [OPERATIONS 1장](OPERATIONS.md#1-도입-전-체크리스트-회사가-결정할-것) 체크리스트, D7 운영.
 
 ## 11. 리스크와 대응
 
@@ -221,6 +221,10 @@ team-pm-agent/
 | Discord 메시지 2000자 제한 | 발송 실패 | 섹션 단위로 나눠 여러 번 전송 |
 | 팀장 승인이 늦어짐 | 오후에 지난 리포트가 발송됨 | 승인 마감(기본 12:00 KST) 이후에는 발송하지 않음 |
 | 팀 저장소에 CI가 없음 | CI 분석·Handoff 장면이 사라짐 | 가상 팀 `ci_flaky` fixture로 시연, 팀 저장소에 기본 CI 추가 제안 |
+| 로그·커밋에 비밀값이 섞임 | 외부 LLM·채널로 유출 | 수집 직후·LLM 호출 직전 2중 가림 |
+| 커밋 메시지를 통한 프롬프트 인젝션 | 지어낸 작업이 리포트에 실림 | 데이터 경계 표시 + 검증기가 근거 없는 줄 차단 |
+| 공휴일·거절한 날 활동 누락 | 리포트 공백 | 마지막 발송 리포트 이후부터 수집 |
+| 회사 도입 시 LLM·노무 이슈 | 도입 불가 | OPERATIONS 1장 체크리스트, 승인 전에는 규칙 기반(`fake`)으로 운영 |
 
 ## 12. 시연 시나리오 (발표용)
 

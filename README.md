@@ -18,7 +18,7 @@ GitHub Actions(평일 08:07 KST)
 ```bash
 pip install -r requirements.txt
 python -m pm_agent.run --fixture fixtures/ci_flaky.json     # → report.md
-python -m pytest -q --cov=pm_agent                          # 90 passed, 커버리지 99%
+python -m pytest -q --cov=pm_agent                          # 145 passed, 커버리지 99%
 ```
 
 가상 팀 **campus-market**: 해든(팀장·인증) · 민수(결제) · 지우(프론트) · 서연(채팅·알림)
@@ -36,15 +36,30 @@ python -m pytest -q --cov=pm_agent                          # 90 passed, 커버�
 
 ## 실제 팀 저장소에 연결하기
 
-1. `config.yaml`의 `team_repo`, `members`(GitHub 아이디), `leader`, `test_log_pattern`을 실제 값으로 바꿉니다. 실제 이메일은 커밋하지 마세요.
-2. **Settings → Secrets and variables → Actions**
-   - Secrets: `GH_READ_TOKEN`(팀 저장소 읽기 전용 PAT), `OPENAI_API_KEY` 또는 `ANTHROPIC_API_KEY`, `DISCORD_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL_TEST`
-   - Variables: `TEAM_REPO`, `LLM_PROVIDER`, `LLM_MODEL`
-3. **Settings → Environments → `daily-report`** 생성 → Required reviewers에 팀장 추가
-4. Actions → `daily-scrum` → Run workflow (`fixture` 비우고 `dry_run` 체크) → 승인 → 테스트 채널 확인
+1. `config.yaml`의 `repos`, `members`(GitHub 아이디), `leader`, `test_log_pattern`, `channels`를 실제 값으로 바꿉니다. 실제 이메일·웹훅 주소는 커밋하지 말고 `*_env`(비밀값 이름)를 쓰세요.
+2. 인증: **GitHub App**(회사 권장) 또는 읽기 전용 PAT(`GH_READ_TOKEN`) — [OPERATIONS 3장](docs/OPERATIONS.md#3-github-인증--github-app-권장)
+3. **Settings → Secrets and variables → Actions**에 LLM 키와 채널 비밀값을 넣습니다 — [OPERATIONS 4장](docs/OPERATIONS.md#4-발송-채널)
+4. **Settings → Environments → `daily-report`** 생성 → Required reviewers에 팀장 추가
+5. Actions → `daily-scrum` → Run workflow (`dry_run` 체크) → 승인 → 테스트 채널 확인
 
 로컬에서 실제 저장소 수집: `GH_READ_TOKEN=... python -m pm_agent.run --since 1d`
 발송 미리보기: `python -m pm_agent.publish report.md --print`
+
+## 실무 운영 기능
+
+| 기능 | 내용 |
+|---|---|
+| 인증 | GitHub App 설치 토큰(자동 만료, 조직 관리) 또는 PAT, GitHub Enterprise Server 지원 |
+| 발송 채널 | Discord · Slack · Microsoft Teams · 메일(Gmail/회사 SMTP), 동시 발송, 채널별 실패 격리 |
+| 보안 | 로그·커밋 메시지의 토큰·비밀번호·이메일·주민번호 등 자동 가림(2중), 프롬프트 인젝션 완화 |
+| 근무일 | 주말·한국 공휴일(대체공휴일 포함)·회사 휴일 자동 건너뜀 |
+| 중복·누락 방지 | 같은 날 재발송 방지, 마지막 발송 리포트 이후부터 수집(휴일·거절한 날 활동 포함) |
+| 이력 | 날짜별 리포트 통계·LLM 비용을 `pm-agent-state` 브랜치에 기록 |
+| 알림 | generate/publish 실패 시 운영 채널로 알림 |
+| 확장 | 한 팀 여러 저장소(`web#35`, `api#12`), 팀별 설정 파일·워크플로 |
+| 배포 | GitHub Actions 또는 Docker(비루트) |
+
+자세한 내용: [운영 가이드 (OPERATIONS.md)](docs/OPERATIONS.md)
 
 ## 문서
 
@@ -56,6 +71,7 @@ python -m pytest -q --cov=pm_agent                          # 90 passed, 커버�
 | [AGENTS](docs/AGENTS.md) | 에이전트 설계서 (그래프, 입출력 계약, 프롬프트, 검증) |
 | [TEST_PLAN](docs/TEST_PLAN.md) | 테스트 계획서 (단위·그래프·E2E, 품질 평가) |
 | [TEAM_AGREEMENT](docs/TEAM_AGREEMENT.md) | 팀 합의서 (수집 범위, 약속) |
+| [OPERATIONS](docs/OPERATIONS.md) | 운영 가이드 (도입 체크리스트, 인증, 채널, 보안, 장애 대응) |
 
 ## 적용 과정
 09 GitHub Actions · 03 Supervisor · 05 Handoff · 06 발송 승인

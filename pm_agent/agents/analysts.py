@@ -7,6 +7,7 @@ from ..config import Config
 from ..llm import LLM, fake_finding
 from ..models import (SEVERITY_ORDER, AnalysisResult, CIAnalysisResult, Diagnosis,
                       Finding, FindingDraft, RawActivity, RiskCandidate)
+from ..security import UNTRUSTED_NOTE, wrap_untrusted
 from ..state import PMState
 from . import dumps, prompt
 
@@ -68,8 +69,10 @@ def analyst_inputs(area: str, state: PMState, cfg: Config, extra: str = "") -> t
     refs = sorted({r for c in cands for r in c.refs})
     data = [ref_brief(raw, r) for r in refs]
     names = {k: m.display for k, m in cfg.members.items()}
-    user = prompt("analyst.md").format(area_name=AREA_NAME[area], extra=extra, names=dumps(names),
-                                       candidates=dumps([c.model_dump() for c in cands]), data=dumps(data))
+    user = prompt("analyst.md").format(
+        area_name=AREA_NAME[area], extra=extra, guard=UNTRUSTED_NOTE, names=dumps(names),
+        candidates=wrap_untrusted("CANDIDATES", dumps([c.model_dump() for c in cands])),
+        data=wrap_untrusted("DATA", dumps(data)))
     ctx = {"candidates": [c.model_dump() for c in cands], "data": data}
     return cands, user, ctx
 
@@ -107,7 +110,7 @@ def build_handoff_payload(raw: RawActivity, cands: list[RiskCandidate]) -> dict 
                 logs.append(f"--- {run.ref} ({run.branch} {run.head_sha}) ---")
                 logs.extend(job.log_tail.splitlines()[-80:])
                 if suspect is None:
-                    c = next((c for c in raw.all_commits() if c.sha == run.head_sha), None)
+                    c = next((c for c in raw.all_commits() if c.sha == run.head_sha and c.repo == run.repo), None)
                     if c:
                         suspect = c.ref
     for c in raw.all_commits():
@@ -115,7 +118,8 @@ def build_handoff_payload(raw: RawActivity, cands: list[RiskCandidate]) -> dict 
     return {"test": test, "flaky": flaky, "log": "\n".join(logs),
             "commits": commits[:30], "suspect_commit": suspect,
             "outcomes": [{"ref": r.ref, "sha": r.head_sha, "conclusion": r.conclusion}
-                         for r in raw.ci_runs if r.workflow == target.facts.get("workflow")]}
+                         for r in raw.ci_runs
+                         if (f"{r.repo}/{r.workflow}" if r.repo else r.workflow) == target.facts.get("workflow")]}
 
 
 def make_ci_analyst(llm: LLM, cfg: Config):
@@ -141,7 +145,8 @@ def make_ci_analyst(llm: LLM, cfg: Config):
 def make_ci_diagnoser(llm: LLM, cfg: Config):
     def ci_diagnoser(state: PMState) -> dict:
         payload = state["handoff_payload"]
-        user = prompt("ci_diagnoser.md").format(payload=dumps(payload))
+        user = prompt("ci_diagnoser.md").format(guard=UNTRUSTED_NOTE,
+                                                payload=wrap_untrusted("HANDOFF", dumps(payload)))
         try:
             diag = llm.structured("ci_diagnoser", Diagnosis, "구조화된 JSON으로만 답하라.", user, payload)
             return {"diagnosis": diag, "trace": ["ci_diagnoser"]}

@@ -36,6 +36,8 @@
 | A12 | 담당자 없는 버그 | `GET /repos/{o}/{r}/issues` | `state=open&labels=bug&assignee=none` | 기간 무관 |
 | A10 | job 로그 | `GET /repos/{o}/{r}/actions/jobs/{id}/logs` | — | 실패한 job만, 302 리다이렉트를 따라감. **마지막 200줄만 저장** |
 
+보안: 수집 직후 커밋 메시지·PR/이슈 제목·CI 로그에서 비밀값을 가립니다(`pm_agent/security.py`, OPERATIONS 8장).
+
 예상 호출 수(4인 팀, 1일): A1~A6 약 30회 + A7 4회 + A8~A10 약 20회 ≈ **60회** (NFR-09 기준 300회 이하)
 
 ## 3. 정규화된 데이터 모델
@@ -140,6 +142,8 @@ class RawActivity(BaseModel):
 
 ## 5. 팀원 매핑 (`config.yaml`)
 
+> 전체 설정 항목(여러 저장소, 채널, 근무일, 상태 저장소, 보안)은 `config.yaml` 주석과 [OPERATIONS.md](OPERATIONS.md)를 보세요. 아래는 팀원 매핑 부분입니다.
+
 ```yaml
 team_repo: owner/team-repo
 timezone: Asia/Seoul
@@ -177,7 +181,7 @@ class MemberDigest(BaseModel):
     today: list[EvidenceItem]       # FR-06
 ```
 
-`ref` 형식은 모든 문서와 코드에서 이 규칙으로 통일합니다. 검증기(AGENTS 6장)는 `ref`가 `RawActivity` 안에 실제로 있는지 확인합니다.
+`ref` 형식은 모든 문서와 코드에서 이 규칙으로 통일합니다. 저장소가 여러 개면 별칭을 붙여 `pr:web/35`, `commit:api/a1b2c3d`, `run:api/144`처럼 씁니다(리포트에는 `web#35`, `api@a1b2c3d`, `api run #144`로 표시). 검증기(AGENTS 6장)는 `ref`가 `RawActivity` 안에 실제로 있는지 확인합니다.
 
 ## 7. Fixtures
 

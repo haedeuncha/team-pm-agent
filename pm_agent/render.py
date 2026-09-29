@@ -16,8 +16,15 @@ def link_refs(text: str, raw: RawActivity) -> str:
     def repl(m):
         ref = m.group(1)
         obj = raw.find(ref)
-        kind, _, key = ref.partition(":")
-        label = key if kind == "commit" else (f"run #{key}" if kind == "run" else f"#{key}")
+        kind, _, rest = ref.partition(":")
+        alias, _, key = rest.rpartition("/")
+        prefix = f"{alias}" if alias else ""
+        if kind == "commit":
+            label = f"{prefix}@{key}" if alias else key
+        elif kind == "run":
+            label = f"{prefix} run #{key}".strip()
+        else:
+            label = f"{prefix}#{key}"
         return f"[{label}](<{obj.url}>)" if obj is not None and getattr(obj, "url", "") else f"`{ref}`"
     return REF_RE.sub(repl, text)
 

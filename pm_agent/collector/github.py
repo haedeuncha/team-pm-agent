@@ -1,6 +1,7 @@
 """GitHub REST API 수집기 (docs/DATA_SPEC.md 2장). LLM 을 쓰지 않는다."""
 from __future__ import annotations
 
+import os
 import time
 from datetime import datetime, timedelta
 from typing import Callable, Iterator
@@ -9,6 +10,7 @@ import httpx
 
 from ..config import Config
 from ..models import CIJob, CIRun, Commit, Issue, PullRequest, RawActivity
+from ..security import redact_raw
 from . import logparse
 from .normalize import (_dt, commit_from_api, issues_from_api, last_assigned_at,
                         pr_from_api, run_from_api)
@@ -18,11 +20,12 @@ API = "https://api.github.com"
 
 class GitHubClient:
     def __init__(self, token: str | None, *, transport: httpx.BaseTransport | None = None,
-                 sleep: Callable[[float], None] = time.sleep):
+                 sleep: Callable[[float], None] = time.sleep, base_url: str | None = None):
         headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        self.http = httpx.Client(base_url=API, headers=headers, timeout=30,
+        base = base_url or os.getenv("GITHUB_API_URL") or API      # GitHub Enterprise Server 지원
+        self.http = httpx.Client(base_url=base.rstrip("/"), headers=headers, timeout=30,
                                  transport=transport, follow_redirects=True)
         self.sleep = sleep
         self.calls = 0
@@ -47,6 +50,13 @@ class GitHubClient:
             return resp
         resp.raise_for_status()
         return resp
+
+    def send(self, method: str, url: str, body: dict | None = None):
+        """쓰기 요청 (상태 저장소, 토큰 발급 등). 재시도하지 않는다."""
+        self.calls += 1
+        resp = self.http.request(method, url, json=body)
+        resp.raise_for_status()
+        return resp.json() if resp.content else {}
 
     def get(self, url: str, params: dict | None = None):
         return self._request(url, params).json()
@@ -81,7 +91,45 @@ def fetch_last_success(client: GitHubClient, own_repo: str, workflow_file: str) 
 
 # ------------------------------------------------------------------ 본 수집
 def collect(cfg: Config, client: GitHubClient, since: datetime, until: datetime) -> RawActivity:
-    repo = cfg.team_repo
+    """설정된 모든 저장소를 수집해 하나의 RawActivity 로 합친다."""
+    parts = [_tag(_collect_repo(cfg, client, rc.name, since, until), rc.alias) for rc in cfg.repos]
+    merged = RawActivity(
+        repo=cfg.repo_label, default_branch=parts[0].default_branch,
+        default_branches={rc.alias: p.default_branch for rc, p in zip(cfg.repos, parts)},
+        since=since, until=until,
+    )
+    for p in parts:
+        merged.commits += p.commits
+        merged.pull_requests += p.pull_requests
+        merged.issues += p.issues
+        merged.open_unassigned_bugs += p.open_unassigned_bugs
+        merged.ci_runs += p.ci_runs
+        merged.unmapped_commits += p.unmapped_commits
+        for k, lst in p.open_assigned.items():
+            merged.open_assigned.setdefault(k, []).extend(lst)
+    if cfg.security.redact_secrets:
+        redact_raw(merged, cfg.security.extra_patterns)
+    return merged
+
+
+def _tag(raw: RawActivity, alias: str) -> RawActivity:
+    """여러 저장소일 때 모든 항목에 저장소 별칭을 붙여 ref 가 겹치지 않게 한다."""
+    if not alias:
+        return raw
+    for c in raw.commits:
+        c.repo = alias
+    for p in raw.pull_requests:
+        p.repo = alias
+        for c in p.commits:
+            c.repo = alias
+    for i in [*raw.issues, *raw.open_unassigned_bugs, *(x for lst in raw.open_assigned.values() for x in lst)]:
+        i.repo = alias
+    for r in raw.ci_runs:
+        r.repo = alias
+    return raw
+
+
+def _collect_repo(cfg: Config, client: GitHubClient, repo: str, since: datetime, until: datetime) -> RawActivity:
     base = f"/repos/{repo}"
     default_branch = client.get(base).get("default_branch", "main")
     lookback = min(since, until - timedelta(days=cfg.thresholds.issue_blocked_days))

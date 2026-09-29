@@ -1,0 +1,13 @@
+.git
+.github
+tests
+fixtures
+examples
+docs
+scripts
+**/__pycache__
+.pytest_cache
+.coverage
+report.*
+.env
+.pm-agent-state

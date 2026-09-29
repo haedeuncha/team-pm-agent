@@ -1,15 +1,24 @@
-# team-pm-agent 설정 (docs/DATA_SPEC.md 5장)
+# team-pm-agent 설정 — docs/OPERATIONS.md 참고
 # 아래 팀과 저장소는 개발·시연용 가상 데이터입니다. 실제 팀에 적용할 때 바꾸세요.
-team_repo: demo-team/campus-market
+# ⚠️ 이 저장소가 public 이면 실제 이메일·웹훅 주소를 여기에 쓰지 말고 *_env(비밀값 이름)를 쓰세요.
+
+team_name: campus-market
+
+# 분석할 저장소. 여러 개면 alias 를 서로 다르게 지정 (예: web, api)
+# 환경 변수 TEAM_REPO="owner/repo" 또는 "web=owner/web,api=owner/api" 로 덮어쓸 수 있음
+repos:
+  - name: demo-team/campus-market
+    alias: ""
+
 timezone: Asia/Seoul
-leader: haeden                 # 리포트 승인자 (members의 key)
-approval_deadline_kst: "12:00" # 이 시각까지 승인되지 않으면 발송하지 않음
+leader: haeden                  # 리포트 승인자 (members 의 key)
+approval_deadline: "12:00"      # 이 시각(팀 시간대)까지 승인되지 않으면 발송하지 않음
 
 members:
   haeden:
     display: 해든
     github: haedeuncha
-    emails: []                 # 실제 이메일은 public 저장소에 커밋하지 마세요
+    emails: []                  # 커밋 작성자 매칭용
   minsu:
     display: 민수
     github: minsu-dev
@@ -23,8 +32,8 @@ members:
     github: seoyeon-park
     emails: []
 
-bots: ["dependabot[bot]", "github-actions[bot]"]
-test_log_pattern: pytest       # pytest | jest | junit
+bots: ["dependabot[bot]", "github-actions[bot]", "renovate[bot]"]
+test_log_pattern: pytest        # pytest | jest | junit
 
 thresholds:
   pr_stale_hours: 48
@@ -34,9 +43,58 @@ thresholds:
   ci_repeat_min_failures: 3
   ci_recent_runs: 20
 
+# 정기 실행(--scheduled)을 건너뛰는 날
+schedule:
+  skip_weekends: true
+  skip_holidays: true
+  holiday_country: KR           # 대체공휴일 포함
+  extra_holidays: []            # 예: ["2026-11-02"]  창립기념일, 전사 휴무일
+
 llm:
-  provider: fake               # fake(오프라인) | openai | anthropic
-  model: null                  # 예: gpt-4o-mini, claude-haiku-4-5
+  provider: fake                # fake(오프라인) | openai | anthropic
+  model: null                   # 예: gpt-4o-mini, claude-haiku-4-5
   temperature: 0
+  price_per_1m_input: 0         # 비용 추정용 USD (모델 요금표에 맞춰 입력)
+  price_per_1m_output: 0
+
+# 리포트 발송 채널: 여러 개 동시에 켤 수 있음. 비밀값은 이름(*_env)만 적고 값은 GitHub Secrets 에.
+channels:
+  - type: discord
+    webhook_env: DISCORD_WEBHOOK_URL
+    test_webhook_env: DISCORD_WEBHOOK_URL_TEST
+  - type: slack
+    enabled: false
+    webhook_env: SLACK_WEBHOOK_URL
+    test_webhook_env: SLACK_WEBHOOK_URL_TEST
+  - type: teams
+    enabled: false
+    webhook_env: TEAMS_WEBHOOK_URL
+    test_webhook_env: TEAMS_WEBHOOK_URL_TEST
+  - type: email                 # Gmail: 2단계 인증 + 앱 비밀번호
+    name: gmail
+    enabled: false
+    smtp_host: smtp.gmail.com
+    smtp_port: 587
+    username_env: SMTP_USERNAME
+    password_env: SMTP_PASSWORD
+    to_env: REPORT_EMAIL_TO     # "a@x.com,b@x.com"
+    test_to_env: REPORT_EMAIL_TO_TEST
+
+# 워크플로 실패 알림 (운영 채널). 비워 두면 알림 없음
+alerts:
+  - type: discord
+    webhook_env: ALERT_WEBHOOK_URL
+
+# 중복 발송 방지 + 리포트 이력: none | local | github(전용 브랜치에 기록)
+state:
+  backend: github
+  branch: pm-agent-state
+
+security:
+  redact_secrets: true          # 로그·커밋 메시지의 토큰, 비밀번호, 이메일, 주민번호 등을 가림
+  extra_patterns: []            # 회사 고유 비밀 형식 (정규식)
+
+github:
+  api_url: null                 # GitHub Enterprise Server: https://ghe.example.com/api/v3
 
 max_hops: 6

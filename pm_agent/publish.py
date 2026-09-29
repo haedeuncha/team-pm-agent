@@ -1,125 +1,119 @@
-"""승인 후 발송: Discord 웹훅 (docs/PLAN.md 6장).
+"""승인 후 발송 (docs/PLAN.md 6장, docs/OPERATIONS.md).
 
-- 2000자 제한 → 섹션(##) 단위로 나눠 전송 (FR-13)
-- 429 → retry_after 만큼 기다렸다 재전송 (TC-PUB-02)
-- 승인 마감(approval_deadline_kst)이 지났으면 발송하지 않음 (승인 만료)
+1. 정기 실행을 건너뛴 날(주말·공휴일)이면 아무것도 하지 않음
+2. 승인 마감(approval_deadline)이 지났으면 발송하지 않음
+3. 같은 날짜 리포트를 이미 보냈으면 다시 보내지 않음 (상태 저장소, --force 로 무시)
+4. config.yaml 의 channels 전부에 발송 (Discord / Slack / Teams / 이메일)
+5. 발송 표시와 리포트 이력을 상태 저장소에 기록
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
-import sys
-import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable
-
-import httpx
+from zoneinfo import ZoneInfo
 
 from .collector.window import KST
 from .config import load_config
-
-LIMIT = 1900  # Discord 2000자 제한에 여유를 둠
-
-
-def split_message(md: str, limit: int = LIMIT) -> list[str]:
-    sections, cur = [], []
-    for line in md.splitlines():
-        if line.startswith("## ") and cur:
-            sections.append("\n".join(cur).strip())
-            cur = []
-        cur.append(line)
-    if cur:
-        sections.append("\n".join(cur).strip())
-
-    chunks: list[str] = []
-    buf = ""
-    for sec in sections:
-        pieces = [sec] if len(sec) <= limit else _split_long(sec, limit)
-        for p in pieces:
-            if buf and len(buf) + 2 + len(p) > limit:
-                chunks.append(buf)
-                buf = p
-            else:
-                buf = f"{buf}\n\n{p}" if buf else p
-    if buf:
-        chunks.append(buf)
-    return chunks
+from .notify import broadcast, split_message  # noqa: F401  (split_message 는 하위 호환용)
+from .store import NullStore, history_key, make_store, sent_key
 
 
-def _split_long(text: str, limit: int) -> list[str]:
-    out, buf = [], ""
-    for line in text.splitlines():
-        while len(line) > limit:            # 한 줄이 너무 긴 극단적 경우
-            out.append(line[:limit])
-            line = line[limit:]
-        if buf and len(buf) + 1 + len(line) > limit:
-            out.append(buf)
-            buf = line
-        else:
-            buf = f"{buf}\n{line}" if buf else line
-    if buf:
-        out.append(buf)
-    return out
-
-
-def is_expired(generated_at: datetime, deadline_hhmm: str, now: datetime) -> bool:
-    """생성일(KST)의 마감 시각이 지났으면 True."""
-    gen = generated_at.astimezone(KST)
+def is_expired(generated_at: datetime, deadline_hhmm: str, now: datetime, tz: ZoneInfo = KST) -> bool:
+    """생성일(팀 시간대)의 마감 시각이 지났으면 True."""
+    gen = generated_at.astimezone(tz)
     hh, mm = map(int, deadline_hhmm.split(":"))
     deadline = gen.replace(hour=hh, minute=mm, second=0, microsecond=0)
     if deadline <= gen:          # 마감 이후에 만든 리포트(수동 실행)는 다음 날 같은 시각까지 유효
         deadline += timedelta(days=1)
-    return now.astimezone(KST) > deadline
+    return now.astimezone(tz) > deadline
 
 
-def send(chunks: list[str], webhook: str, *, transport: httpx.BaseTransport | None = None,
-         sleep: Callable[[float], None] = time.sleep) -> int:
-    sent = 0
-    with httpx.Client(timeout=15, transport=transport) as http:
-        for chunk in chunks:
-            for _ in range(3):
-                resp = http.post(webhook, json={"content": chunk, "allowed_mentions": {"parse": []}})
-                if resp.status_code == 429:
-                    sleep(float(resp.json().get("retry_after", 1)))
-                    continue
-                resp.raise_for_status()
-                sent += 1
-                break
-            else:
-                raise RuntimeError("Discord 429 가 계속되어 전송 실패")
-    return sent
+def step_summary(lines: list[str]) -> None:
+    path = os.getenv("GITHUB_STEP_SUMMARY")
+    if path:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, store=None, **send_kw) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("report", nargs="?", default="report.md")
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--print", action="store_true", help="보내지 않고 나눈 결과만 출력")
+    ap.add_argument("--dry-run", action="store_true", help="각 채널의 테스트 대상(test_*_env)으로만 발송")
+    ap.add_argument("--channel", help="이 채널만 발송 (type 또는 name)")
+    ap.add_argument("--force", action="store_true", help="이미 보낸 날짜여도 다시 발송")
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
-    md = Path(args.report).read_text(encoding="utf-8")
-    meta_path = Path(args.report).with_suffix(".json")
-    if meta_path.exists():
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    report_path = Path(args.report)
+    meta_path = report_path.with_suffix(".json")
+    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+
+    if meta.get("skipped"):
+        print(f"🏖️ 건너뛴 실행입니다: {meta.get('reason')}")
+        return 0
+    now = datetime.now(timezone.utc)
+    if meta.get("generated_at") and not args.print:
         gen = datetime.fromisoformat(meta["generated_at"])
-        if is_expired(gen, cfg.approval_deadline_kst, datetime.now(timezone.utc)):
-            print(f"⏰ 승인 마감({cfg.approval_deadline_kst} KST)이 지나 발송하지 않습니다.")
+        if is_expired(gen, cfg.approval_deadline, now, cfg.tz):
+            print(f"⏰ 승인 마감({cfg.approval_deadline} {cfg.timezone})이 지나 발송하지 않습니다.")
+            step_summary([f"⏰ 승인 마감({cfg.approval_deadline})이 지나 발송하지 않았습니다."])
             return 0
 
-    chunks = split_message(md)
+    md = report_path.read_text(encoding="utf-8")
     if args.print:
-        for i, c in enumerate(chunks, 1):
-            print(f"----- [{i}/{len(chunks)}] {len(c)}자 -----\n{c}")
+        for i, c in enumerate(split_message(md), 1):
+            print(f"----- [{i}] {len(c)}자 -----\n{c}")
         return 0
-    webhook = os.getenv("DISCORD_WEBHOOK_URL")
-    if not webhook:
-        print("DISCORD_WEBHOOK_URL 이 없습니다.", file=sys.stderr)
+
+    report_date = (meta.get("report_date") or now.astimezone(cfg.tz).strftime("%Y-%m-%d"))[:10]
+    if store is None:
+        try:
+            store = make_store(cfg)
+        except RuntimeError as e:
+            print(f"⚠️ 상태 저장소를 쓸 수 없어 중복 발송 방지·이력 기록 없이 진행합니다: {e}")
+            store = NullStore()
+    key = sent_key(cfg, report_date)
+    if not args.dry_run and not args.force:
+        prev = store.get(key)
+        if prev:
+            print(f"🔁 {report_date} 리포트는 이미 {prev.get('sent_at')}에 발송했습니다. (--force 로 재발송)")
+            return 0
+
+    title = f"[{cfg.team_name}] 데일리 스크럼 — {meta.get('report_date') or report_date}"
+    if args.dry_run:
+        title = "[테스트] " + title
+    results = broadcast(cfg.channels, md, title, dry_run=args.dry_run, only=args.channel, **send_kw)
+
+    lines = ["| 채널 | 결과 | 메시지 | 비고 |", "|---|---|---|---|"]
+    for r in results:
+        icon = "✅" if r.ok and r.messages else ("⏭️" if r.ok else "❌")
+        print(f"{icon} {r.channel}: {r.messages}개 {r.detail}")
+        lines.append(f"| {r.channel} | {icon} | {r.messages} | {r.detail} |")
+    step_summary(["### 📨 발송 결과", *lines])
+
+    sent = [r for r in results if r.ok and r.messages]
+    failed = [r for r in results if not r.ok]
+    if sent and not args.dry_run:
+        record = {"sent_at": now.isoformat(), "channels": [r.channel for r in sent],
+                  "failed": [r.channel for r in failed], "run_id": os.getenv("GITHUB_RUN_ID")}
+        try:
+            store.put(key, record)
+            store.put(history_key(cfg, report_date), {**meta, **record})
+        except Exception as e:  # 발송은 끝났으므로 기록 실패는 경고만
+            print(f"⚠️ 발송 기록 저장 실패: {type(e).__name__}")
+    if not results:
+        print("켜진 채널이 없습니다. config.yaml 의 channels 를 확인하세요.")
         return 2
-    n = send(chunks, webhook)
-    print(f"📨 Discord 로 {n}개 메시지 전송 완료")
+    if failed:
+        return 1
+    if not sent:
+        print("모든 채널을 건너뛰었습니다(비밀값 없음).")
+        return 2
     return 0
 
 

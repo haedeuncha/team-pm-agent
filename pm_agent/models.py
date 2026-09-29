@@ -11,7 +11,12 @@ Severity = Literal["critical", "high", "medium", "low"]
 Area = Literal["pr", "ci", "issue"]
 SEVERITY_ORDER: list[str] = ["low", "medium", "high", "critical"]
 
-REF_RE = re.compile(r"\[((?:commit|pr|issue|run):[0-9a-f]+)\]")
+# ref 형식: "<kind>:<key>" 또는 여러 저장소일 때 "<kind>:<alias>/<key>" (예: pr:35, pr:web/35, commit:api/a1b2c3d)
+REF_RE = re.compile(r"\[((?:commit|pr|issue|run):(?:[A-Za-z0-9_.-]+/)?[0-9a-f]+)\]")
+
+
+def make_ref(kind: str, repo: str, key: object) -> str:
+    return f"{kind}:{repo}/{key}" if repo else f"{kind}:{key}"
 
 
 # ---------------------------------------------------------------- 수집 데이터
@@ -22,10 +27,11 @@ class Commit(BaseModel):
     committed_at: datetime
     url: str
     issue_refs: list[int] = Field(default_factory=list)
+    repo: str = ""            # 여러 저장소일 때 저장소 별칭
 
     @property
     def ref(self) -> str:
-        return f"commit:{self.sha}"
+        return make_ref("commit", self.repo, self.sha)
 
 
 class Review(BaseModel):
@@ -48,10 +54,11 @@ class PullRequest(BaseModel):
     commits: list[Commit] = Field(default_factory=list)
     closes_issues: list[int] = Field(default_factory=list)
     url: str
+    repo: str = ""
 
     @property
     def ref(self) -> str:
-        return f"pr:{self.number}"
+        return make_ref("pr", self.repo, self.number)
 
 
 class Issue(BaseModel):
@@ -67,10 +74,11 @@ class Issue(BaseModel):
     assigned_at: datetime | None = None          # 마지막 assigned 이벤트 시각
     last_linked_activity: datetime | None = None  # 이 이슈를 참조한 커밋/PR의 마지막 활동
     url: str
+    repo: str = ""
 
     @property
     def ref(self) -> str:
-        return f"issue:{self.number}"
+        return make_ref("issue", self.repo, self.number)
 
 
 class CIJob(BaseModel):
@@ -94,10 +102,11 @@ class CIRun(BaseModel):
     actor: str | None = None
     jobs: list[CIJob] = Field(default_factory=list)
     url: str
+    repo: str = ""
 
     @property
     def ref(self) -> str:
-        return f"run:{self.run_number}"
+        return make_ref("run", self.repo, self.run_number)
 
     @property
     def failed_tests(self) -> list[str]:
@@ -105,8 +114,9 @@ class CIRun(BaseModel):
 
 
 class RawActivity(BaseModel):
-    repo: str
+    repo: str                                  # 표시용 이름 (저장소 하나면 owner/name)
     default_branch: str = "main"
+    default_branches: dict[str, str] = Field(default_factory=dict)   # 별칭 → 기본 브랜치
     since: datetime
     until: datetime
     commits: list[Commit] = Field(default_factory=list)
@@ -120,47 +130,38 @@ class RawActivity(BaseModel):
     def in_window(self, t: datetime | None) -> bool:
         return t is not None and self.since <= t <= self.until
 
-    def ref_universe(self) -> set[str]:
-        refs: set[str] = set()
-        for c in self.all_commits():
-            refs.add(c.ref)
-        for p in self.pull_requests:
-            refs.add(p.ref)
-        for i in self.all_issues():
-            refs.add(i.ref)
-        for r in self.ci_runs:
-            refs.add(r.ref)
-        return refs
+    def branch_of(self, repo_alias: str) -> str:
+        return self.default_branches.get(repo_alias, self.default_branch)
 
     def all_commits(self) -> list[Commit]:
         seen: dict[str, Commit] = {}
         for c in self.commits:
-            seen.setdefault(c.sha, c)
+            seen.setdefault(c.ref, c)
         for p in self.pull_requests:
             for c in p.commits:
-                seen.setdefault(c.sha, c)
+                seen.setdefault(c.ref, c)
         return list(seen.values())
 
     def all_issues(self) -> list[Issue]:
-        seen: dict[int, Issue] = {}
+        seen: dict[str, Issue] = {}
         for i in self.issues + self.open_unassigned_bugs:
-            seen.setdefault(i.number, i)
+            seen.setdefault(i.ref, i)
         for lst in self.open_assigned.values():
             for i in lst:
-                seen.setdefault(i.number, i)
+                seen.setdefault(i.ref, i)
         return list(seen.values())
 
+    def index(self) -> dict[str, object]:
+        idx: dict[str, object] = {}
+        for obj in [*self.all_commits(), *self.pull_requests, *self.all_issues(), *self.ci_runs]:
+            idx.setdefault(obj.ref, obj)
+        return idx
+
+    def ref_universe(self) -> set[str]:
+        return set(self.index())
+
     def find(self, ref: str):
-        kind, _, key = ref.partition(":")
-        if kind == "commit":
-            return next((c for c in self.all_commits() if c.sha == key), None)
-        if kind == "pr":
-            return next((p for p in self.pull_requests if str(p.number) == key), None)
-        if kind == "issue":
-            return next((i for i in self.all_issues() if str(i.number) == key), None)
-        if kind == "run":
-            return next((r for r in self.ci_runs if str(r.run_number) == key), None)
-        return None
+        return self.index().get(ref)
 
 
 # ---------------------------------------------------------------- 근거 데이터

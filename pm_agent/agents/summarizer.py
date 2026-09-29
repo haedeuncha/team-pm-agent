@@ -12,6 +12,7 @@ from ..llm import LLM
 from ..models import (KIND_LABEL, REF_RE, SEVERITY_ORDER, MemberSection, Report, SummaryDraft)
 from ..render import render_report
 from ..rules import compute_stats
+from ..security import UNTRUSTED_NOTE, wrap_untrusted
 from ..state import PMState
 from . import dumps, prompt
 
@@ -19,8 +20,8 @@ WEEKDAYS = "월화수목금토일"
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 
 
-def report_date(state: PMState) -> str:
-    now = state["raw"].until.astimezone(KST)
+def report_date(state: PMState, tz=KST) -> str:
+    now = state["raw"].until.astimezone(tz)
     return f"{now:%Y-%m-%d} ({WEEKDAYS[now.weekday()]})"
 
 
@@ -36,7 +37,9 @@ def make_summarizer(llm: LLM, cfg: Config):
         errors = state.get("validation_errors") or []
         err_txt = ("\n이전 답변의 문제(반드시 고쳐라):\n- " + "\n- ".join(errors) + "\n") if errors else ""
         risk_view = [{"title": f.title, "severity": f.severity, "refs": f.refs} for f in risks]
-        user = prompt("summarizer.md").format(errors=err_txt, digests=dumps(digests), risks=dumps(risk_view))
+        user = prompt("summarizer.md").format(errors=err_txt, guard=UNTRUSTED_NOTE,
+                                              digests=wrap_untrusted("EVIDENCE", dumps(digests)),
+                                              risks=wrap_untrusted("RISKS", dumps(risk_view)))
         try:
             draft = llm.structured("summarizer", SummaryDraft, "구조화된 JSON으로만 답하라.", user,
                                    {"digests": digests, "risks": risk_view, "errors": errors})
@@ -44,7 +47,7 @@ def make_summarizer(llm: LLM, cfg: Config):
             return {"attempts": attempts, "report": None, "trace": ["summarizer"],
                     "validation_errors": [f"요약 LLM 오류: {type(e).__name__}"]}
         report = Report(
-            date=report_date(state), headline=draft.headline[:80], risks=risks,
+            date=report_date(state, cfg.tz), headline=draft.headline[:80], risks=risks,
             diagnosis=state.get("diagnosis"), members=draft.members,
             display_names={k: m.display for k, m in cfg.members.items()},
             stats=compute_stats(state["raw"]),
@@ -151,7 +154,7 @@ def make_fallback_report(cfg: Config):
     def fallback_report(state: PMState) -> dict:
         risks = sorted_risks(state)
         report = Report(
-            date=report_date(state), headline="자동 요약에 실패해 원본 데이터로 만든 리포트입니다.",
+            date=report_date(state, cfg.tz), headline="자동 요약에 실패해 원본 데이터로 만든 리포트입니다.",
             risks=risks, diagnosis=None, members=_template_members(state, cfg),
             display_names={k: m.display for k, m in cfg.members.items()},
             stats=compute_stats(state["raw"]),
@@ -166,7 +169,7 @@ def make_fallback_report(cfg: Config):
 def make_quiet_report(cfg: Config):
     def quiet_report(state: PMState) -> dict:
         report = Report(
-            date=report_date(state), headline="특이사항 없음 — 어제 팀 저장소에 새 활동이 없었습니다.",
+            date=report_date(state, cfg.tz), headline="특이사항 없음 — 어제 팀 저장소에 새 활동이 없었습니다.",
             risks=[], members=_template_members(state, cfg),
             display_names={k: m.display for k, m in cfg.members.items()},
             stats=compute_stats(state["raw"]),

@@ -5,3 +5,6 @@ __pycache__/
 /report.md
 /report.json
 .pytest_cache/
+.env
+.pm-agent-state/
+.coverage

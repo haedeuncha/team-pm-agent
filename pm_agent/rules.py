@@ -38,17 +38,18 @@ def rule_pr(raw: RawActivity, cfg: Config) -> list[RiskCandidate]:
 
 def rule_issue(raw: RawActivity, cfg: Config) -> list[RiskCandidate]:
     th, now, out = cfg.thresholds, raw.until, []
-    seen: set[int] = set()
+    seen: set[str] = set()
     for member, issues in raw.open_assigned.items():
         for i in issues:
-            if i.number in seen:
+            if i.ref in seen:
                 continue
-            seen.add(i.number)
+            seen.add(i.ref)
             start = i.assigned_at or i.created_at
             limit = timedelta(days=th.issue_blocked_days)
             last = i.last_linked_activity
             if now - start >= limit and (last is None or now - last >= limit):
-                linked_prs = [p.ref for p in raw.pull_requests if i.number in p.closes_issues and p.state == "open"]
+                linked_prs = [p.ref for p in raw.pull_requests
+                              if p.repo == i.repo and i.number in p.closes_issues and p.state == "open"]
                 out.append(RiskCandidate(id="", rule_id="R-ISSUE-BLOCKED", area="issue", severity="medium",
                                          refs=[i.ref, *linked_prs], owner=member,
                                          facts={"title": i.title, "assigned_days": round((now - start).total_seconds() / 86400, 1),
@@ -65,14 +66,15 @@ def rule_issue(raw: RawActivity, cfg: Config) -> list[RiskCandidate]:
 def rule_ci(raw: RawActivity, cfg: Config) -> list[RiskCandidate]:
     th, out = cfg.thresholds, []
     runs = [r for r in raw.ci_runs if r.conclusion in ("success", "failure")]
-    by_wf: dict[str, list] = defaultdict(list)
+    by_wf: dict[tuple[str, str], list] = defaultdict(list)
     for r in runs:
-        by_wf[r.workflow].append(r)
+        by_wf[(r.repo, r.workflow)].append(r)
 
-    for wf, wf_runs in by_wf.items():
+    for (repo, wf_name), wf_runs in by_wf.items():
+        wf = f"{repo}/{wf_name}" if repo else wf_name
         wf_runs.sort(key=lambda r: r.created_at)
         # R-CI-MAIN-RED: 기본 브랜치의 마지막 실행이 실패
-        main_runs = [r for r in wf_runs if r.branch == raw.default_branch]
+        main_runs = [r for r in wf_runs if r.branch == raw.branch_of(repo)]
         if main_runs and main_runs[-1].conclusion == "failure":
             last = main_runs[-1]
             out.append(RiskCandidate(id="", rule_id="R-CI-MAIN-RED", area="ci", severity="critical",
@@ -122,7 +124,7 @@ def build_digests(raw: RawActivity, cfg: Config) -> dict[str, MemberDigest]:
     for p in raw.pull_requests:
         if p.author in d and p.state == "merged" and raw.in_window(p.merged_at):
             d[p.author].yesterday.append(EvidenceItem(ref=p.ref, kind="pr_merged", title=p.title, url=p.url))
-            merged_shas |= {c.sha for c in p.commits}
+            merged_shas |= {c.ref for c in p.commits}
         elif p.author in d and raw.in_window(p.created_at):
             d[p.author].yesterday.append(EvidenceItem(ref=p.ref, kind="pr_opened", title=p.title, url=p.url))
         for r in p.reviews:
@@ -131,7 +133,7 @@ def build_digests(raw: RawActivity, cfg: Config) -> dict[str, MemberDigest]:
                     d[r.reviewer].yesterday.append(EvidenceItem(
                         ref=p.ref, kind="review", title=f"{p.title} 리뷰({r.state})", url=p.url))
     for c in raw.all_commits():
-        if c.author in d and raw.in_window(c.committed_at) and c.sha not in merged_shas:
+        if c.author in d and raw.in_window(c.committed_at) and c.ref not in merged_shas:
             d[c.author].yesterday.append(EvidenceItem(ref=c.ref, kind="commit", title=c.message, url=c.url))
     for i in raw.issues:
         if i.closed_by in d and raw.in_window(i.closed_at):

@@ -14,6 +14,7 @@ from typing import Any, Callable, Type, TypeVar
 
 from pydantic import BaseModel
 
+from .security import redact
 from .models import (KIND_LABEL, AnalysisResult, CIAnalysisResult, Diagnosis, FindingDraft,
                      MemberSection, SummaryDraft)
 
@@ -27,11 +28,21 @@ class LLM:
     def structured(self, node: str, schema: Type[T], system: str, user: str, context: dict) -> T:
         raise NotImplementedError
 
+    def totals(self) -> dict[str, int]:
+        return {k: sum(u[k] for u in self.usage.values()) for k in ("calls", "input", "output")}
+
+    def cost_usd(self, price_in_per_1m: float, price_out_per_1m: float) -> float:
+        t = self.totals()
+        return round(t["input"] / 1e6 * price_in_per_1m + t["output"] / 1e6 * price_out_per_1m, 6)
+
 
 # ---------------------------------------------------------------------------- 실제 모델
 class LangChainLLM(LLM):
-    def __init__(self, provider: str, model: str | None, temperature: float = 0.0):
+    extra_patterns: list[str] = []
+    def __init__(self, provider: str, model: str | None, temperature: float = 0.0,
+                 extra_patterns: list[str] | None = None):
         super().__init__()
+        self.extra_patterns = extra_patterns or []
         if provider == "openai":
             from langchain_openai import ChatOpenAI
             self.chat = ChatOpenAI(model=model or "gpt-4o-mini", temperature=temperature, timeout=60, max_retries=2)
@@ -45,7 +56,8 @@ class LangChainLLM(LLM):
     def structured(self, node, schema, system, user, context):
         # function_calling: 선택 필드(기본값 있는 필드)가 있는 스키마도 OpenAI/Anthropic 모두에서 안정적
         runnable = self.chat.with_structured_output(schema, include_raw=True, method="function_calling")
-        out = runnable.invoke([("system", system), ("human", user)])
+        # 방어적 2차 가림: 수집 단계에서 놓친 비밀값이 외부 LLM 으로 나가지 않게
+        out = runnable.invoke([("system", system), ("human", redact(user, self.extra_patterns))])
         meta = getattr(out.get("raw"), "usage_metadata", None) or {}
         u = self.usage[node]
         u["calls"] += 1
@@ -194,7 +206,8 @@ class FakeLLM(LLM):
 
 
 def make_llm(provider: str, model: str | None = None, temperature: float = 0.0,
-             display: Callable[[str | None], str] | None = None) -> LLM:
+             display: Callable[[str | None], str] | None = None,
+             extra_patterns: list[str] | None = None) -> LLM:
     if provider == "fake":
         return FakeLLM(display=display or (lambda k: k or "미지정"))
-    return LangChainLLM(provider, model, temperature)
+    return LangChainLLM(provider, model, temperature, extra_patterns=extra_patterns)
