@@ -2,6 +2,7 @@
 
 > 저장소: [haedeuncha/team-pm-agent](https://github.com/haedeuncha/team-pm-agent) (public, 팀 저장소를 읽기 전용 PAT로 조회)
 > 08 멀티 에이전트 미니 프로젝트 · 작성일 2026-09-29
+> 세부 문서: [REQUIREMENTS](REQUIREMENTS.md) · [DATA_SPEC](DATA_SPEC.md) · [AGENTS](AGENTS.md) · [TEST_PLAN](TEST_PLAN.md)
 > 적용 과정: 09 GitHub Actions · 03 Supervisor · 05 Handoff · 06 발송 승인
 
 ---

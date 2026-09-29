@@ -13,7 +13,13 @@ GitHub Actions(평일 08:07 KST)
 ```
 
 ## 문서
-- [계획서 (PLAN.md)](docs/PLAN.md)
+| 문서 | 내용 |
+|---|---|
+| [PLAN](docs/PLAN.md) | 전체 계획서 (아키텍처, 일정, 리스크) |
+| [REQUIREMENTS](docs/REQUIREMENTS.md) | 요구사항 정의서 (사용자 스토리, FR/NFR, 인수 기준) |
+| [DATA_SPEC](docs/DATA_SPEC.md) | 데이터 명세서 (GitHub API, 데이터 모델, fixtures) |
+| [AGENTS](docs/AGENTS.md) | 에이전트 설계서 (그래프, 입출력 계약, 프롬프트, 검증) |
+| [TEST_PLAN](docs/TEST_PLAN.md) | 테스트 계획서 (단위·그래프·E2E, 품질 평가) |
 
 ## 적용 과정
 09 GitHub Actions · 03 Supervisor · 05 Handoff · 06 발송 승인
