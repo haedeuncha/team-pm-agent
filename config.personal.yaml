@@ -1,0 +1,45 @@
+# 개인 테스트용 설정 — 팀 없이 내 저장소 하나로 전체 흐름을 확인할 때 사용
+# 사용법
+#   로컬:    python -m pm_agent.run --config config.personal.yaml --since 7d
+#   Actions: Variables 에 PM_CONFIG = config.personal.yaml
+# 이 저장소(team-pm-agent)를 분석 대상으로 쓰면 별도 토큰 없이 Actions 기본 토큰으로 수집됩니다.
+
+team_name: haeden-personal
+repos:
+  - name: haedeuncha/team-pm-agent
+timezone: Asia/Seoul
+leader: haeden
+approval_deadline: "23:59"      # 개인 테스트는 하루 종일 승인 가능
+
+members:
+  haeden:
+    display: 해든
+    github: haedeuncha
+
+test_log_pattern: pytest
+
+schedule:
+  skip_weekends: true
+  skip_holidays: true
+
+llm:
+  provider: fake                # API 키 없이 테스트. 실제 LLM 은 openai / anthropic
+  model: null
+
+channels:
+  - type: discord               # 개인 Discord 서버를 하나 만들어 웹훅 연결
+    webhook_env: DISCORD_WEBHOOK_URL
+    test_webhook_env: DISCORD_WEBHOOK_URL_TEST
+  - type: email                 # 또는 내 Gmail 로 받기 (앱 비밀번호 필요)
+    name: gmail
+    enabled: false
+    username_env: SMTP_USERNAME
+    password_env: SMTP_PASSWORD
+    to_env: REPORT_EMAIL_TO
+    test_to_env: REPORT_EMAIL_TO_TEST
+
+alerts: []
+
+state:
+  backend: github
+  branch: pm-agent-state

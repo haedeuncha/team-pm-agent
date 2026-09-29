@@ -5,12 +5,23 @@
 
 ## 1. GitHub에 올리기
 
-- [ ] PC 터미널에서 push
-  ```
-  cd "C:\pm agent"
-  git push origin main
-  ```
-- [ ] GitHub → **Actions** 탭에서 `ci` 워크플로가 초록색(통과)인지 확인
+- [x] PC 터미널에서 push (2026-09-29 완료)
+- [x] GitHub → **Actions** 탭에서 `ci` 워크플로 통과 확인 (run #1 success)
+- [ ] 이후 변경분 push: `cd "C:\pm agent"` → `git push origin main`
+
+## 1-1. 개인 테스트 (팀 없이 먼저 해 보기, 선택)
+
+`config.personal.yaml`은 **이 저장소(team-pm-agent) 자체**를 분석합니다. 토큰·LLM 키 없이 동작합니다.
+
+- [ ] 개인 Discord 서버를 하나 만들고 채널 웹훅 2개(본 채널, 테스트 채널) 만들기
+- [ ] Secrets: `DISCORD_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL_TEST`
+- [ ] Variables: `PM_CONFIG` = `config.personal.yaml`
+- [ ] Environments: `daily-report` → Required reviewers에 **나 자신**
+- [ ] Run workflow (`fixture` 비우기, `since`에 `7d`, `dry_run` 체크) → 승인 → 테스트 채널 확인
+- [ ] 위험 요소를 보고 싶으면: 나에게 할당한 이슈 만들기, 리뷰어 없는 PR 열어 두기 등
+- [ ] 팀 운영으로 넘어갈 때 `PM_CONFIG` 변수를 지우면 `config.yaml`을 사용
+
+로컬에서 바로 확인: `python -m pm_agent.run --config config.personal.yaml --since 7d`
 
 ## 2. 팀 합의
 

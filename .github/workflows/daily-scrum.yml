@@ -25,6 +25,8 @@ on:
 permissions:
   contents: read
   actions: read
+  issues: read          # 분석 대상이 이 저장소 자신일 때 기본 토큰으로 수집 (개인 테스트)
+  pull-requests: read
 
 concurrency:
   group: daily-scrum-${{ github.workflow }}
@@ -63,7 +65,7 @@ jobs:
         id: run
         env:
           TEAM_REPO: ${{ vars.TEAM_REPO }}
-          GH_READ_TOKEN: ${{ steps.app-token.outputs.token || secrets.GH_READ_TOKEN }}
+          GH_READ_TOKEN: ${{ steps.app-token.outputs.token || secrets.GH_READ_TOKEN || github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
