@@ -6,21 +6,21 @@
 
 | 파일 | 대상 | 개수 |
 |---|---|---|
-| `tests/test_collector.py` | TC-COL-01~09 (+ 429 대기, Jest/JUnit 패턴) | 14 |
+| `tests/test_collector.py` | TC-COL-01~09 (+ 429 대기, Jest/JUnit 패턴, 실데이터 회귀: `action_required` 등 CI 상태값) | 15 |
 | `tests/test_collect_api.py` | 가짜 GitHub API로 `collect()` 전체 배선, 로그 다운로드 실패 | 2 |
 | `tests/test_rules.py` | TC-RULE 전체 경계값, 임계값 설정, 근거 데이터 | 14 |
-| `tests/test_graph.py` | TC-GRAPH-01~07, TC-AGT-01·04, 모든 줄 근거 링크(TC-EVAL-01 자동화) | 16 |
+| `tests/test_graph.py` | TC-GRAPH-01~07, TC-AGT-01·04, 모든 줄 근거 링크(TC-EVAL-01 자동화), 링크 줄이기 | 17 |
 | `tests/test_validator.py` | TC-AGT-02~06, V4 | 7 |
 | `tests/test_edges.py` | LLM 실패, GitHub 5xx·재시도 등 오류 경로 | 14 |
 | `tests/test_llm.py` | 실제 LLM 래퍼(가짜 chat 모델), FakeLLM 분기 | 7 |
-| `tests/test_cli.py` | `run.py` 실행 흐름, 휴일 건너뜀, 수집 시작점 | 9 |
+| `tests/test_cli.py` | `run.py` 실행 흐름, 휴일 건너뜀, 수집 시작점, `--anonymous` | 10 |
 | `tests/test_publish.py` | TC-PUB, 승인 마감, 중복 발송 방지, 이력, 채널 실패 | 11 |
 | `tests/test_notify.py` | Discord·Slack·Teams·Gmail(SMTP) 형식, 테스트 대상, 비밀값 누출 방지 | 15 |
 | `tests/test_security.py` | 비밀값 13종 가리기, 프롬프트 인젝션 방어 | 19 |
 | `tests/test_ops.py` | 상태 저장소(local/GitHub 브랜치), 공휴일, GitHub App 토큰, 실패 알림, 설정 검증 | 13 |
 | `tests/test_multirepo.py` | 여러 저장소 ref·규칙·링크·수집 | 4 |
 
-`python -m pytest -q --cov=pm_agent` → **145 passed, 커버리지 99%** (API 키·네트워크 불필요). CI는 커버리지 95% 미만이면 실패합니다. TC-E2E, TC-EVAL(수동 지표)은 실제 저장소 연결 후 진행합니다.
+`python -m pytest -q --cov=pm_agent` → **148 passed, 커버리지 99%** (API 키·네트워크 불필요). CI는 커버리지 95% 미만이면 실패합니다. TC-E2E-01·02는 개인 설정으로 실환경에서 통과했습니다(2026-09-29, daily-scrum #3·#4). 나머지 TC-E2E와 TC-EVAL(수동 지표)은 팀 저장소 연결 후 진행합니다.
 
 ## 1. 테스트 전략
 
@@ -33,7 +33,7 @@
 | 품질 평가 | 실제 리포트 정확도 | 체크리스트 + 팀원 평가 | ✓ | ✓ | 운영 기간 매일 |
 
 - 단위·계약·그래프 테스트는 team-pm-agent 저장소의 `ci.yml`에서 push마다 실행합니다. API 키 없이 돌아가야 합니다(NFR-07).
-- FakeLLM은 `tests/fakes.py`에 두고 노드 이름별로 미리 정한 Pydantic 객체를 돌려줍니다.
+- FakeLLM은 `pm_agent/llm.py`의 `FakeLLM`에 두고 노드 이름별로 미리 정한 Pydantic 객체를 돌려줍니다.
 
 ## 2. 단위 테스트
 
@@ -127,7 +127,7 @@
 | TC-EVAL-05 팀원 만족도 | "스탠드업에 도움이 됐나" 1~5점, 팀원 4명 평균 | 4.0 이상 |
 | TC-EVAL-06 비용·시간 | 로그의 토큰 사용량, job 실행 시간 | NFR-01, 02 충족 |
 
-- TC-EVAL-01, 03은 스크립트(`scripts/eval_report.py`)로 자동 계산합니다.
+- TC-EVAL-01, 03은 스크립트(`scripts/eval_report.py`(D7 운영 시작 때 작성 예정))로 자동 계산합니다.
 - TC-EVAL-02, 04, 05는 Discord 리포트에 반응 이모지(✅ 맞음 / ❌ 틀림)를 달게 해서 모읍니다.
 
 ## 6. 일정 연결

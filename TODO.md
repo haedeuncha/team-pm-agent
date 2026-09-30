@@ -13,11 +13,12 @@
 
 `config.personal.yaml`은 **이 저장소(team-pm-agent) 자체**를 분석합니다. 토큰·LLM 키 없이 동작합니다.
 
-- [ ] 개인 Discord 서버를 하나 만들고 채널 웹훅 2개(본 채널, 테스트 채널) 만들기
-- [ ] Secrets: `DISCORD_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL_TEST`
-- [ ] Variables: `PM_CONFIG` = `config.personal.yaml`
-- [ ] Environments: `daily-report` → Required reviewers에 **나 자신**
-- [ ] Run workflow (`fixture` 비우기, `since`에 `7d`, `dry_run` 체크) → 승인 → 테스트 채널 확인
+- [x] 개인 Discord 서버를 하나 만들고 채널 웹훅 2개(본 채널, 테스트 채널) 만들기
+- [x] Secrets: `DISCORD_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL_TEST`
+- [x] Variables: `PM_CONFIG` = `config.personal.yaml`
+- [x] Environments: `daily-report` → Required reviewers에 **나 자신**
+- [x] Run workflow (`fixture` 비우기, `since`에 `7d`, `dry_run` 체크) → 승인 → 테스트 채널 확인 (2026-09-29 #3 성공)
+- [x] `dry_run` 끄고 실제 채널 발송 (2026-09-29 #4 성공, 발송 기록 저장 확인)
 - [ ] 위험 요소를 보고 싶으면: 나에게 할당한 이슈 만들기, 리뷰어 없는 PR 열어 두기 등
 - [ ] 팀 운영으로 넘어갈 때 `PM_CONFIG` 변수를 지우면 `config.yaml`을 사용
 
@@ -55,7 +56,7 @@
 
 | 이름 | 값 | 필수 |
 |---|---|---|
-| `GH_READ_TOKEN` | 팀 저장소 **읽기 전용** Fine-grained PAT (Contents, Pull requests, Issues, Actions, Metadata: Read-only) | ✅ |
+| `GH_READ_TOKEN` | 팀 저장소 **읽기 전용** Fine-grained PAT (Contents, Pull requests, Issues, Actions, Metadata: Read-only) | ✅ (이 저장소 자신을 분석할 땐 불필요) |
 | `OPENAI_API_KEY` 또는 `ANTHROPIC_API_KEY` | LLM API 키 | ✅ (fake로 운영하면 생략) |
 | `DISCORD_WEBHOOK_URL` | 팀 채널 웹훅 | ✅ |
 | `DISCORD_WEBHOOK_URL_TEST` | 테스트 채널 웹훅 | ✅ |
@@ -77,7 +78,7 @@
 
 - [ ] Workflow permissions가 막혀 있지 않은지 확인 (publish job이 `pm-agent-state` 브랜치에 기록을 씀)
 
-## 6. 첫 실행 (가상 팀으로 먼저)
+## 6. 첫 실행 (가상 팀으로 먼저, 선택)
 
 - [ ] Actions → `daily-scrum` → **Run workflow** → `fixture`에 `ci_flaky`, `dry_run` 체크
 - [ ] generate job의 **Summary**에서 리포트 미리보기 확인

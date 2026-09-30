@@ -105,7 +105,8 @@ class CIRun(BaseModel):
     branch: str
     head_sha: str
     event: str
-    conclusion: Literal["success", "failure", "cancelled", "skipped", "timed_out"] | None
+    conclusion: str | None   # success, failure, cancelled, skipped, timed_out, action_required, neutral 등
+                             # (규칙은 success/failure 만 사용. 실데이터에서 action_required 확인)
     created_at: datetime
     actor: str | None
     jobs: list[CIJob]        # 실패한 run만 채움
@@ -145,9 +146,11 @@ class RawActivity(BaseModel):
 > 전체 설정 항목(여러 저장소, 채널, 근무일, 상태 저장소, 보안)은 `config.yaml` 주석과 [OPERATIONS.md](OPERATIONS.md)를 보세요. 아래는 팀원 매핑 부분입니다.
 
 ```yaml
-team_repo: owner/team-repo
+repos:
+  - name: owner/team-repo
+    alias: ""
 timezone: Asia/Seoul
-leader: haedeuncha
+leader: haeden                     # members 의 key
 members:
   haeden:
     display: 해든
