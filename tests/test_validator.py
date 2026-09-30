@@ -64,3 +64,17 @@ def test_agt06_email_masked(cfg, fixture):
     s = {**s, "report": s["report"].model_copy(update={"headline": "문의: minsu@example.com"})}
     report, _, warnings = validate(s, cfg)
     assert "@example.com" not in report.headline and warnings
+
+
+def test_flaky_diagnosis_drops_suspect_commit(cfg, fixture):
+    """실제 LLM 회귀: flaky 로 진단하면서 의심 커밋을 붙이던 문제."""
+    s = final_state(cfg, fixture("ci_flaky"))
+    d = s["report"].diagnosis.model_copy(update={"pattern": "flaky", "suspect_commit": "commit:c333333"})
+    report, _, _ = validate({**s, "report": s["report"].model_copy(update={"diagnosis": d})}, cfg)
+    assert report.diagnosis is not None and report.diagnosis.suspect_commit is None
+    d2 = d.model_copy(update={"pattern": "regression", "suspect_commit": "commit:fffffff"})
+    report, _, _ = validate({**s, "report": s["report"].model_copy(update={"diagnosis": d2})}, cfg)
+    assert report.diagnosis.suspect_commit is None          # 존재하지 않는 커밋
+    d3 = d.model_copy(update={"pattern": "regression", "suspect_commit": "commit:c333333"})
+    report, _, _ = validate({**s, "report": s["report"].model_copy(update={"diagnosis": d3})}, cfg)
+    assert report.diagnosis.suspect_commit == "commit:c333333"

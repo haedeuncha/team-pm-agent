@@ -336,7 +336,7 @@ pm_agent/        collector/ (GitHub 수집·인증) · rules.py (판정) · agen
                  graph.py · llm.py · notify.py (채널) · store.py (기록) · security.py · workcalendar.py
 config.yaml      팀 설정            config.personal.yaml  개인 테스트용
 fixtures/        가상 팀 데이터      examples/             예시 리포트
-tests/           테스트 149개 (커버리지 99%)
+tests/           테스트 150개 (커버리지 99%)
 ```
 
 | 문서 | 내용 |

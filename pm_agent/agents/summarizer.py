@@ -117,6 +117,10 @@ def validate(state: PMState, cfg: Config) -> tuple[Report | None, list[str], lis
         if not report.diagnosis.evidence_lines or any(l not in log_lines for l in report.diagnosis.evidence_lines):
             warnings.append("CI 진단의 인용 줄이 로그와 달라 진단 결과를 제외함")
             report = report.model_copy(update={"diagnosis": None})
+        elif report.diagnosis.suspect_commit and (
+                report.diagnosis.pattern == "flaky" or report.diagnosis.suspect_commit not in raw.ref_universe()):
+            # flaky 는 특정 커밋 탓이 아니고, 모르는 커밋은 지어낸 것 → 의심 커밋만 뺀다 (실제 LLM 실행에서 발견)
+            report = report.model_copy(update={"diagnosis": report.diagnosis.model_copy(update={"suspect_commit": None})})
 
     # V6: 이메일 마스킹
     masked = EMAIL_RE.sub("[email]", report.model_dump_json())

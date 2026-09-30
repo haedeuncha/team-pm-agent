@@ -10,7 +10,7 @@
 | `tests/test_collect_api.py` | 가짜 GitHub API로 `collect()` 전체 배선, 로그 다운로드 실패 | 2 |
 | `tests/test_rules.py` | TC-RULE 전체 경계값, 임계값 설정, 근거 데이터 | 14 |
 | `tests/test_graph.py` | TC-GRAPH-01~07, TC-AGT-01·04, 모든 줄 근거 링크(TC-EVAL-01 자동화), 링크 줄이기 | 17 |
-| `tests/test_validator.py` | TC-AGT-02~06, V4 | 7 |
+| `tests/test_validator.py` | TC-AGT-02~06, V4, 진단 의심 커밋 정리(실제 LLM 회귀) | 8 |
 | `tests/test_edges.py` | LLM 실패, GitHub 5xx·재시도 등 오류 경로 | 14 |
 | `tests/test_llm.py` | 실제 LLM 래퍼(가짜 chat 모델), FakeLLM 분기 | 8 |
 | `tests/test_cli.py` | `run.py` 실행 흐름, 휴일 건너뜀, 수집 시작점, `--anonymous` | 10 |
@@ -20,7 +20,7 @@
 | `tests/test_ops.py` | 상태 저장소(local/GitHub 브랜치), 공휴일, GitHub App 토큰, 실패 알림, 설정 검증 | 13 |
 | `tests/test_multirepo.py` | 여러 저장소 ref·규칙·링크·수집 | 4 |
 
-`python -m pytest -q --cov=pm_agent` → **149개 통과, 커버리지 99%** (API 키·네트워크 불필요). CI는 커버리지 95% 미만이면 실패합니다. TC-E2E-01·02는 개인 설정으로 실환경에서 통과했습니다(2026-09-29, daily-scrum #3·#4). 나머지 TC-E2E와 TC-EVAL(수동 지표)은 팀 저장소 연결 후 진행합니다.
+`python -m pytest -q --cov=pm_agent` → **150개 통과, 커버리지 99%** (API 키·네트워크 불필요). CI는 커버리지 95% 미만이면 실패합니다. TC-E2E-01·02는 개인 설정으로 실환경에서 통과했습니다(2026-09-29, daily-scrum #3·#4). 나머지 TC-E2E와 TC-EVAL(수동 지표)은 팀 저장소 연결 후 진행합니다.
 
 ## 1. 테스트 전략
 

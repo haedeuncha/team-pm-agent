@@ -142,7 +142,7 @@ publish:
 | 수동 실행 입력 | `since`(1d/7d), `fixture`(가상 팀 시연), `dry_run`(테스트 채널로 발송, 기본 true) |
 | generate job | 수집 → 그래프 실행 → `report.md`를 Job Summary에 표시 → artifact 업로드 |
 | publish job | `environment: daily-report` 승인 대기 → 승인 마감 확인 → Discord 발송 |
-| ci.yml | push마다 테스트 149개(커버리지 95% 미만이면 실패) + fixture 5종 데모 실행 (API 키 불필요) |
+| ci.yml | push마다 테스트 150개(커버리지 95% 미만이면 실패) + fixture 5종 데모 실행 (API 키 불필요) |
 
 **Secrets / Variables**: 인증(GitHub App/PAT), LLM 키, 채널별 비밀값 목록은 [OPERATIONS.md 3·4장](OPERATIONS.md)에 있습니다. 채널 비밀값은 워크플로가 필요한 것만 이름으로 넘깁니다(보안상 `toJSON(secrets)`는 쓰지 않음). 기본 채널 비밀값 이름은 이미 등록돼 있습니다.
 
@@ -182,7 +182,7 @@ team-pm-agent/
 │  ├─ credentials.py        # 비밀값 읽기 (환경 변수, 선택적으로 SECRETS_JSON)
 │  ├─ prompts/*.md · templates/report.md.j2 · render.py
 ├─ fixtures/ · examples/ · scripts/make_fixtures.py
-├─ tests/                   # 149개 테스트, 커버리지 99%
+├─ tests/                   # 150개 테스트, 커버리지 99%
 ├─ config.yaml              # 팀·저장소·팀원·임계값·채널·근무일·보안
 ├─ Dockerfile · .env.example
 └─ requirements.txt · requirements-llm.txt
@@ -206,7 +206,7 @@ team-pm-agent/
 - D1~D6 코드는 가상 팀 데이터로 구현·테스트 완료.
 - **실환경 검증 (2026-09-29)**: 개인 설정(`config.personal.yaml`)으로 실제 GitHub 수집 → 에이전트 → 팀장 승인 → Discord 발송까지 성공 (daily-scrum #3 테스트 채널, #4 실제 채널). 실제 운영에서 찾은 문제 2건 수정: 워크플로의 `toJSON(secrets)`가 GitHub 악성 패턴으로 차단됨 → 비밀값을 이름별로 전달, CI 상태값 `action_required` 미지원 → 모든 상태값 허용.
 - 실무 운영 기능 추가: GitHub App 인증, Slack·Teams·메일(Gmail) 채널, 비밀값 가리기, 프롬프트 인젝션 완화, 공휴일 건너뛰기, 중복 발송 방지·이력, 실패 알림, 여러 저장소, GitHub Enterprise, Docker ([OPERATIONS.md](OPERATIONS.md)).
-- 테스트 149개 통과, 커버리지 99%.
+- 테스트 150개 통과, 커버리지 99%.
 - 아직 실환경에서 확인하지 않은 것: 실제 LLM(OpenAI/Anthropic), 팀 저장소(팀원 여러 명), Slack·Teams·메일 채널, GitHub App 인증, Docker, 정기 실행(스케줄)과 공휴일 건너뛰기.
 - 남은 일: 팀 합의 → 팀 저장소·LLM 연결 후 `dry_run` 확인, 회사 도입 시 [OPERATIONS 1장](OPERATIONS.md#1-도입-전-체크리스트-회사가-결정할-것) 체크리스트, D7 운영.
 
