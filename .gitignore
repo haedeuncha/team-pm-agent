@@ -8,3 +8,5 @@ __pycache__/
 .env
 .pm-agent-state/
 .coverage
+holiday_test.yaml
+Claude outputs/

@@ -24,6 +24,39 @@
 
 로컬에서 바로 확인 (토큰 없이): `python -m pm_agent.run --config config.personal.yaml --anonymous --since 7d`
 
+## 1-2. 남은 실환경 검증 (쉬운 순서)
+
+> 현재 상태: 개인 설정으로 실제 GitHub → 에이전트 → 승인 → Discord 발송까지 검증 완료 (2026-09-29, daily-scrum #3·#4).
+> 아래는 아직 실제 환경에서 돌려 보지 않은 항목입니다. **2 → 3 → 4까지 하면 과제용 검증은 충분합니다.**
+
+| # | 테스트 | 할 일 | 시간 | 통과 기준 |
+|---|---|---|---|---|
+| 1 | 정기 실행 | 없음 (평일 아침 기다리기) | — | Actions에 `schedule` 이벤트 실행이 생기고 승인 요청 메일이 옴 |
+| 2 | 공휴일 건너뛰기 | 아래 명령 실행 | 1분 | "정기 실행을 건너뜁니다" 출력. 실제로는 10/9(금) 한글날 아침에 자동 확인 |
+| 3 | 실제 위험 요소 | 이 저장소에 ① `bug` 라벨 이슈(담당자 없음) ② 나에게 할당한 이슈 ③ 리뷰어 없는 PR | 5분 | ①은 바로, ③은 48시간 뒤, ②는 3일 뒤 리포트에 나옴 |
+| 4 | 실제 LLM | OpenAI 키 → Secret `OPENAI_API_KEY`, Variables `LLM_PROVIDER`=`openai`, `LLM_MODEL`=`gpt-4o-mini` | 10분 | `fixture`=`ci_flaky` + `dry_run`으로 실행 → "자동 요약 실패" 없음, CI 진단 나옴, 로그 끝 비용 확인 |
+| 5 | Gmail | 2단계 인증 → 앱 비밀번호 → Secrets `SMTP_USERNAME`, `SMTP_PASSWORD`, `REPORT_EMAIL_TO_TEST` | 10분 | `config.personal.yaml`의 email 채널 `enabled: true` → `dry_run` 실행 → 메일 도착 |
+| 6 | 팀 저장소 | 팀 합의 → `config.yaml`에 팀 저장소·팀원 아이디 → `PM_CONFIG` 변수 삭제 | 1~2일 | 팀원별 어제·오늘 할 일이 실제와 맞음 |
+| 7 | 5일 운영 평가 | 매일 승인, 팀원 ❌ 반응 모으기 | 5일 | [TEST_PLAN 5장](docs/TEST_PLAN.md) 지표 |
+| 8 | Slack·Teams, GitHub App, Docker | 회사 도입 시 | — | 과제에서는 "구현 완료, 실무 환경에서 검증 예정"으로 소개 |
+
+- [ ] 1. 정기 실행 확인 (첫 예정: 2026-09-30 08:07 — 첫 회는 GitHub 쪽 지연·누락이 흔함, 다음 평일까지 확인)
+- [x] 2. 공휴일 건너뛰기 (2026-09-30 로컬 확인: "회사 휴일 — 정기 실행을 건너뜁니다")
+- [ ] 3. 실제 위험 요소
+- [ ] 4. 실제 LLM
+- [ ] 5. Gmail (선택)
+- [ ] 6. 팀 저장소
+- [ ] 7. 5일 운영 평가
+
+**2번 명령** (`C:\pm agent`에서)
+
+```
+python -c "import yaml,datetime;c=yaml.safe_load(open('config.personal.yaml',encoding='utf-8'));c['schedule']['extra_holidays']=[datetime.date.today().isoformat()];yaml.safe_dump(c,open('holiday_test.yaml','w',encoding='utf-8'),allow_unicode=True)"
+python -m pm_agent.run --config holiday_test.yaml --anonymous --scheduled
+```
+
+`🏖️ <오늘 날짜> 회사 휴일 — 정기 실행을 건너뜁니다.`가 나오면 통과. `holiday_test.yaml`은 커밋되지 않습니다(.gitignore).
+
 ## 2. 팀 합의
 
 - [ ] team-pm-agent 저장소에 **"PM 에이전트 도입 합의" 이슈** 열기 (본문은 채팅에서 받은 것 사용)
