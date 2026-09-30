@@ -119,13 +119,23 @@ def _fill_text(line: str, items: dict) -> str:
     return f"{KIND_LABEL[first.kind]}: {first.title} " + "".join(f"[{r}]" for r in refs)
 
 
+COMMIT_COUNT_RE = re.compile(r"커밋\s*(\d+)\s*건")
+
+
+def _fix_commit_count(line: str, n: int) -> str:
+    """숫자는 LLM 이 아니라 코드가 책임진다: '커밋 9건' → 실제 커밋 수 (실제 LLM 실행 #8 에서 22건을 9건으로 씀)."""
+    return COMMIT_COUNT_RE.sub(f"커밋 {n}건", line) if n else line
+
+
 def _normalize_section(sec: MemberSection, cfg: Config, digests) -> MemberSection:
     key = _member_key(sec.member, cfg)
     dg = digests.get(key)
     iy = {e.ref: e for e in dg.yesterday} if dg else {}
     it = {e.ref: e for e in dg.today} if dg else {}
+    n_commits = sum(1 for e in iy.values() if e.kind == "commit")
     return MemberSection(member=key, note=sec.note,
-                         yesterday=[_fill_text(_repair_refs(_render_line(l), set(iy)), iy) for l in sec.yesterday],
+                         yesterday=[_fix_commit_count(_fill_text(_repair_refs(_render_line(l), set(iy)), iy), n_commits)
+                                    for l in sec.yesterday],
                          today=[_fill_text(_repair_refs(_render_line(l), set(it)), it) for l in sec.today])
 
 

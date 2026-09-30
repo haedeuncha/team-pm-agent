@@ -217,3 +217,16 @@ def test_ci_exclude_workflows(cfg, fixture):
     cfg.ci_exclude_workflows = ["CI"]
     assert not any(c.area == "ci" for c in evaluate(raw, cfg))
     assert compute_stats(raw, cfg)["ci_success_rate"] == "-"
+
+
+def test_commit_count_is_corrected_by_code(cfg, fixture):
+    """실제 LLM 회귀(#8): 커밋 22건을 '커밋 9건'으로 쓴 문제 → 코드가 실제 수로 고친다."""
+    from pm_agent.models import DraftLine, DraftMember, SummaryDraft
+    def wrong_count(ctx):
+        return SummaryDraft(headline="h", members=[
+            DraftMember(member="jiwoo", yesterday=[DraftLine(text="커밋 9건: 상품 목록 작업", refs=["commit:d4e5f6a"])]),
+            *[DraftMember(member=k, note="데이터 없음") for k in ("haeden", "minsu", "seoyeon")]])
+    s = run(cfg, fixture("normal_day"), FakeLLM(display=cfg.display, overrides={"summarizer": wrong_count}))
+    jiwoo = next(m for m in s["report"].members if m.member == "jiwoo")
+    n = sum(1 for e in s["digests"]["jiwoo"].yesterday if e.kind == "commit")
+    assert jiwoo.yesterday[0].startswith(f"커밋 {n}건") and n != 9
