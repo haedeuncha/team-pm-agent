@@ -132,7 +132,7 @@ llm:
   provider: fake                     # 처음엔 fake(규칙 기반, 무료). 나중에 openai / anthropic
 ```
 
-전체 항목은 [5장](#5-설정-파일-configyaml)을 보세요.
+전체 항목은 [5장](#5-설정-파일-configyaml), 팀 설정 예시는 [`config.team.example.yaml`](config.team.example.yaml), 팀원 연동 순서는 [TEAM_ONBOARDING.md](docs/TEAM_ONBOARDING.md)를 보세요.
 
 ### 3-3. 팀 저장소 읽기 권한
 
@@ -344,6 +344,7 @@ tests/           테스트 159개 (커버리지 99%)
 | 문서 | 내용 |
 |---|---|
 | [TODO.md](TODO.md) | 도입 체크리스트 |
+| [docs/TEAM_ONBOARDING.md](docs/TEAM_ONBOARDING.md) | 팀원 연동 가이드 (개인 테스트 → 팀 저장소) |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | 운영 가이드: GitHub App, 채널별 설정, 보안, 장애 대응 |
 | [docs/PLAN.md](docs/PLAN.md) | 전체 계획·아키텍처 |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | 요구사항 |

@@ -69,6 +69,10 @@ python -m pm_agent.run --config holiday_test.yaml --anonymous --scheduled
 
 `🏖️ <오늘 날짜> 회사 휴일 — 정기 실행을 건너뜁니다.`가 나오면 통과. `holiday_test.yaml`은 커밋되지 않습니다(.gitignore).
 
+## 2~7. 팀 연동
+
+> 자세한 순서: **[docs/TEAM_ONBOARDING.md](docs/TEAM_ONBOARDING.md)** · 설정 예시: [`config.team.example.yaml`](config.team.example.yaml)
+
 ## 2. 팀 합의
 
 - [ ] team-pm-agent 저장소에 **"PM 에이전트 도입 합의" 이슈** 열기 (본문은 채팅에서 받은 것 사용)

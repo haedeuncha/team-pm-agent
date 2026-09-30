@@ -1,0 +1,75 @@
+# 팀 설정 예시 — docs/TEAM_ONBOARDING.md 3단계
+# 이 파일을 참고해 config.yaml 을 실제 값으로 바꾸세요. (이 파일 자체는 워크플로가 읽지 않습니다)
+# ⚠️ public 저장소면 실제 이메일·웹훅 주소를 적지 마세요. 비밀값은 GitHub Secrets 에.
+
+team_name: our-team                  # 기록 경로·메일 제목에 쓰임
+
+repos:
+  - name: OWNER/TEAM-REPO            # ← 팀 저장소 (owner/name)
+    alias: ""                        # 저장소가 여러 개면 web, api 처럼 서로 다르게
+  # - name: OWNER/TEAM-API
+  #   alias: api
+
+timezone: Asia/Seoul
+leader: member1                      # ← 승인자 (아래 members 의 key)
+approval_deadline: "12:00"
+
+members:                             # ← 팀원 전원
+  member1:
+    display: 홍길동                  # 리포트에 보일 이름
+    github: github-id-1              # GitHub 아이디
+    emails: []                       # 비워 두기 권장 (GitHub 등록 이메일로 커밋하면 아이디로 매칭)
+  member2:
+    display: 김철수
+    github: github-id-2
+    emails: []
+  member3:
+    display: 이영희
+    github: github-id-3
+    emails: []
+  member4:
+    display: 박민수
+    github: github-id-4
+    emails: []
+
+bots: ["dependabot[bot]", "github-actions[bot]", "renovate[bot]"]
+test_log_pattern: pytest             # ← 팀 저장소 테스트 도구: pytest | jest | junit
+ci_exclude_workflows: []             # 배포·알림용 등 CI 분석에서 뺄 워크플로 이름
+
+thresholds:
+  pr_stale_hours: 48
+  pr_abandoned_days: 5
+  issue_blocked_days: 3
+  ci_repeat_window: 5
+  ci_repeat_min_failures: 3
+  ci_recent_runs: 20
+
+schedule:
+  skip_weekends: true
+  skip_holidays: true
+  holiday_country: KR
+  extra_holidays: []                 # 예: ["2026-11-02"]
+
+llm:
+  provider: openai                   # fake(무료·규칙 기반) | openai | anthropic
+  model: gpt-4o-mini
+  temperature: 0
+  price_per_1m_input: 0.15           # 비용 추정용 (모델 요금표 확인 후 입력)
+  price_per_1m_output: 0.60
+
+channels:
+  - type: discord
+    webhook_env: DISCORD_WEBHOOK_URL
+    test_webhook_env: DISCORD_WEBHOOK_URL_TEST
+
+alerts: []                           # 실패 알림: [{type: discord, webhook_env: ALERT_WEBHOOK_URL}]
+
+state:
+  backend: github
+  branch: pm-agent-state
+
+security:
+  redact_secrets: true
+  extra_patterns: []
+
+max_hops: 6
