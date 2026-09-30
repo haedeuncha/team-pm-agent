@@ -78,3 +78,12 @@ def test_dumps_handles_models_and_rejects_unknown():
     assert '"headline": "h"' in dumps(SummaryDraft(members=[], headline="h"))
     with pytest.raises(TypeError):
         dumps(object())
+
+
+def test_fake_finding_unowned_bug_wording():
+    """실데이터 개선: 막 등록된 버그가 '0일 지났지만'으로 어색하게 나오던 문제."""
+    c = {"id": "c1", "rule_id": "R-ISSUE-UNOWNED", "severity": "medium", "refs": ["issue:1"],
+         "owner": None, "facts": {"age_days": 0.1}}
+    assert "오늘 등록된" in fake_finding(c, str).explanation
+    c["facts"]["age_days"] = 3
+    assert "3일 지났지만" in fake_finding(c, str).explanation

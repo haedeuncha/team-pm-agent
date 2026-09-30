@@ -110,7 +110,9 @@ def fake_finding(c: dict, display: Callable[[str | None], str]) -> FindingDraft:
             act = f"{owner}님이 스탠드업에서 진행 상황과 막힌 점을 공유해 주세요."
     elif rid == "R-ISSUE-UNOWNED":
         title = TITLE[rid].format(n=n)
-        exp = f"버그가 등록된 지 {f['age_days']:.0f}일 지났지만 담당자가 없습니다."
+        age = f["age_days"]
+        exp = ("오늘 등록된 버그인데 아직 담당자가 없습니다." if age < 1
+               else f"버그가 등록된 지 {age:.0f}일 지났지만 담당자가 없습니다.")
         act = "팀장님이 오늘 담당자를 지정해 주세요."
     elif rid == "R-CI-MAIN-RED":
         title = TITLE[rid].format(branch=f["branch"], workflow=f["workflow"])
