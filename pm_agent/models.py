@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Severity = Literal["critical", "high", "medium", "low"]
 Area = Literal["pr", "ci", "issue"]
@@ -185,6 +185,12 @@ class EvidenceItem(BaseModel):
     kind: EvidenceKind
     title: str
     url: str
+
+    @field_validator("title")
+    @classmethod
+    def _no_brackets(cls, v: str) -> str:
+        # 커밋 메시지·제목은 외부 입력: "[pr:999]" 같은 근거 표기를 흉내 내지 못하게 대괄호를 바꾼다
+        return v.replace("[", "(").replace("]", ")")
 
 
 class MemberDigest(BaseModel):

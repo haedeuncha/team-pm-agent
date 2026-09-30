@@ -57,9 +57,11 @@ def test_graph05_validator_fails_twice_then_fallback(cfg, fixture):
         return SummaryDraft(members=[MemberSection(member=k, yesterday=["없는 작업 [pr:999]"], today=[])
                                      for k in cfg.members], headline="x")
     s = run(cfg, fixture("normal_day"), FakeLLM(display=cfg.display, overrides={"summarizer": bad}))
-    assert path(s)[-5:] == ["summarizer", "validator", "summarizer", "validator", "fallback_report"]
-    assert "자동 요약 실패" in s["report_md"]
-    assert "pr:999" not in s["report_md"]
+    # 두 번 실패하면 통과한 문장만 쓰고, 비어 버린 팀원은 원본 데이터로 채운다 (hybrid)
+    assert path(s)[-4:] == ["summarizer", "validator", "summarizer", "validator"]
+    assert "원본 데이터로 표시" in s["report_md"]
+    assert "pr:999" not in s["report_md"] and "없는 작업" not in s["report_md"]
+    assert all(m.yesterday or m.today or m.note for m in s["report"].members)
 
 
 def test_graph05b_validator_retry_then_success(cfg, fixture):
@@ -134,3 +136,53 @@ def test_many_commit_links_are_compacted():
     assert compact_refs("PR 머지 [pr:35]") == "PR 머지 [pr:35]"
     from pm_agent.render import space_refs
     assert space_refs("x [commit:a1][pr:2]") == "x [commit:a1] [pr:2]"
+
+
+def test_hybrid_keeps_valid_llm_lines(cfg, fixture):
+    """한 팀원만 틀리면 그 팀원만 원본 데이터로 대체하고 나머지 LLM 문장은 유지."""
+    from pm_agent.llm import fake_summary
+
+    def partly_bad(ctx):
+        d = fake_summary(ctx)
+        d.members[0].yesterday = ["지어낸 일 [pr:999]"]
+        d.members[0].today = []
+        return d
+    s = run(cfg, fixture("normal_day"), FakeLLM(display=cfg.display, overrides={"summarizer": partly_bad}))
+    good = fake_summary({"digests": [d.model_dump(mode="json") for d in s["digests"].values()], "risks": []})
+    assert s["report"].members[1].yesterday == good.members[1].yesterday      # 민수: LLM 문장 유지
+    assert "지어낸 일" not in s["report_md"]
+
+
+def test_ref_repair_and_member_name_mapping(cfg, fixture):
+    """실제 LLM 회귀: [7d0ed54], [#35], 표시 이름(해든)으로 쓴 경우 바로잡기."""
+    from pm_agent.models import MemberSection, SummaryDraft
+    def sloppy(ctx):
+        return SummaryDraft(headline="h", members=[
+            MemberSection(member="해든", yesterday=["로그인 API 머지 [#35]", "로그 추가 [c3d4e5f]"],
+                          today=["토큰 버그 [issue #41]"]),
+            *[MemberSection(member=k, yesterday=[], today=[], note="데이터 없음") for k in ("minsu", "jiwoo", "seoyeon")],
+        ])
+    s = run(cfg, fixture("normal_day"),
+            FakeLLM(display=cfg.display, overrides={"summarizer": sloppy}))
+    haeden = s["report"].members[0]
+    assert haeden.member == "haeden"
+    assert "[pr:35]" in haeden.yesterday[0] and "[commit:c3d4e5f]" in haeden.yesterday[1]
+    assert "[issue:41]" in haeden.today[0]
+
+
+def test_llm_digest_limits_commits(cfg):
+    from pm_agent.agents.summarizer import MAX_COMMITS_FOR_LLM, _llm_digest
+    from pm_agent.models import EvidenceItem, MemberDigest
+    d = MemberDigest(member="haeden", display="해든", yesterday=[
+        EvidenceItem(ref=f"commit:{i:07x}", kind="commit", title=f"c{i}", url="u") for i in range(20)])
+    out = _llm_digest(d)
+    assert len(out["yesterday"]) == MAX_COMMITS_FOR_LLM and out["omitted_commits"] == 20 - MAX_COMMITS_FOR_LLM
+
+
+def test_template_groups_commits():
+    from pm_agent.agents.summarizer import _template_lines
+    from pm_agent.models import EvidenceItem
+    items = [EvidenceItem(ref="pr:3", kind="pr_opened", title="p", url="u")] + [
+        EvidenceItem(ref=f"commit:{i:07x}", kind="commit", title=f"c{i}", url="u") for i in range(5)]
+    lines = _template_lines(items)
+    assert len(lines) == 2 and lines[1].startswith("커밋 5건: c0, c1 외 3건")

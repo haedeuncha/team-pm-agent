@@ -307,7 +307,8 @@ python scripts/make_fixtures.py                # 가상 팀 fixture 다시 만�
 | 승인했는데 "승인 마감이 지나 발송하지 않습니다" | `approval_deadline` 이후 승인 | 설정 변경 또는 다음 날 승인 |
 | "이미 발송했습니다" | 같은 날짜 재실행 | 정상. 다시 보내려면 `--force` |
 | 팀원 이름 대신 GitHub 아이디가 보이거나 "매핑되지 않은 커밋" | `members`에 아이디·이메일 누락 | `members.<key>.github`, `emails` 보완 |
-| 리포트 상단 "자동 요약 실패" | LLM이 근거 없는 내용을 두 번 생성 | 규칙 기반 리포트로 대체된 것. 모델 변경 검토 |
+| 리포트 상단 "일부 팀원 요약은 … 원본 데이터로 표시" | LLM 문장이 두 번 검증에 걸림 | 통과한 문장만 쓰고 나머지는 원본으로 대체된 것. Actions 로그의 "검증 오류" 확인 |
+| 리포트 상단 "자동 요약 실패" | LLM 호출 자체가 실패 (키·요금·네트워크) | `OPENAI_API_KEY`, 결제 상태 확인 |
 | CI 위험이 안 잡힘 | 팀 저장소에 CI가 없거나 테스트 이름 추출 실패 | CI 추가, `test_log_pattern` 확인 |
 | 정기 실행이 안 옴 | 공휴일, 또는 워크플로 비활성화 | Actions 실행 기록의 "건너뜁니다" 로그 확인 |
 
@@ -336,7 +337,7 @@ pm_agent/        collector/ (GitHub 수집·인증) · rules.py (판정) · agen
                  graph.py · llm.py · notify.py (채널) · store.py (기록) · security.py · workcalendar.py
 config.yaml      팀 설정            config.personal.yaml  개인 테스트용
 fixtures/        가상 팀 데이터      examples/             예시 리포트
-tests/           테스트 150개 (커버리지 99%)
+tests/           테스트 155개 (커버리지 99%)
 ```
 
 | 문서 | 내용 |

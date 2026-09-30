@@ -29,11 +29,25 @@ def sorted_risks(state: PMState):
     return sorted(state.get("findings", []), key=lambda f: -SEVERITY_ORDER.index(f.severity))
 
 
+MAX_COMMITS_FOR_LLM = 8
+
+
+def _llm_digest(d) -> dict:
+    """LLM 에 넘길 근거: 커밋이 많으면 최근 몇 개만 (실제 LLM 실행에서 커밋 20건일 때 요약이 실패함)."""
+    data = d.model_dump(mode="json")
+    commits = [e for e in data["yesterday"] if e["kind"] == "commit"]
+    if len(commits) > MAX_COMMITS_FOR_LLM:
+        keep = {id(e) for e in commits[:MAX_COMMITS_FOR_LLM]}
+        data["yesterday"] = [e for e in data["yesterday"] if e["kind"] != "commit" or id(e) in keep]
+        data["omitted_commits"] = len(commits) - MAX_COMMITS_FOR_LLM
+    return data
+
+
 def make_summarizer(llm: LLM, cfg: Config):
     def summarizer(state: PMState) -> dict:
         attempts = state.get("attempts", 0) + 1
         risks = sorted_risks(state)
-        digests = [d.model_dump(mode="json") for d in state["digests"].values()]
+        digests = [_llm_digest(d) for d in state["digests"].values()]
         errors = state.get("validation_errors") or []
         err_txt = ("\n이전 답변의 문제(반드시 고쳐라):\n- " + "\n- ".join(errors) + "\n") if errors else ""
         risk_view = [{"title": f.title, "severity": f.severity, "refs": f.refs} for f in risks]
@@ -58,6 +72,42 @@ def make_summarizer(llm: LLM, cfg: Config):
 
 
 # ------------------------------------------------------------------ 검증기
+BRACKET_RE = re.compile(r"\[([^\[\]]{1,60})\]")
+
+
+def _member_key(name: str, cfg: Config) -> str:
+    if name in cfg.members:
+        return name
+    for key, m in cfg.members.items():
+        if name.strip().lower() in (m.display.lower(), m.github.lower()):
+            return key
+    return name
+
+
+def _repair_refs(line: str, allowed: set[str]) -> str:
+    """LLM 이 흔히 틀리는 근거 표기를 바로잡는다: [7d0ed54] → [commit:7d0ed54], [#3]/[PR #3] → [pr:3] 등.
+    허용된 근거 안에서 하나로 정해질 때만 고친다."""
+    def fix(m):
+        token = m.group(1).strip()
+        if REF_RE.fullmatch(f"[{token}]"):
+            return m.group(0)
+        t = token.lower().replace("pr ", "").replace("issue ", "").replace("run ", "").lstrip("#").strip()
+        cands = [r for r in allowed if r.split(":", 1)[1].split("/")[-1] == t
+                 or (r.startswith("commit:") and len(t) >= 7 and r.split("/")[-1].split(":")[-1].startswith(t[:7]))]
+        return f"[{cands[0]}]" if len(cands) == 1 else m.group(0)
+    return BRACKET_RE.sub(fix, line)
+
+
+def _normalize_section(sec: MemberSection, cfg: Config, digests) -> MemberSection:
+    key = _member_key(sec.member, cfg)
+    dg = digests.get(key)
+    ay = {e.ref for e in dg.yesterday} if dg else set()
+    at = {e.ref for e in dg.today} if dg else set()
+    return MemberSection(member=key, note=sec.note,
+                         yesterday=[_repair_refs(l, ay) for l in sec.yesterday],
+                         today=[_repair_refs(l, at) for l in sec.today])
+
+
 def validate(state: PMState, cfg: Config) -> tuple[Report | None, list[str], list[str]]:
     """(정리된 report, 재시도가 필요한 오류, 경고) 를 반환."""
     report = state.get("report")
@@ -73,8 +123,8 @@ def validate(state: PMState, cfg: Config) -> tuple[Report | None, list[str], lis
     if set(risk_ids) != cand_ids or len(risk_ids) != len(set(risk_ids)):
         errors.append(f"위험 요소 누락/중복: 후보 {sorted(cand_ids)} vs 리포트 {sorted(risk_ids)}")
 
-    # V4: 모든 팀원 섹션
-    got = {m.member for m in report.members}
+    # V4: 모든 팀원 섹션 (표시 이름·GitHub 아이디로 쓴 경우는 key 로 바로잡은 뒤 검사)
+    got = {_member_key(m.member, cfg) for m in report.members}
     missing, unknown = set(cfg.members) - got, got - set(cfg.members)
     if missing:
         errors.append(f"팀원 섹션 누락: {sorted(missing)}")
@@ -83,7 +133,7 @@ def validate(state: PMState, cfg: Config) -> tuple[Report | None, list[str], lis
 
     # V2: 모든 줄에 근거 ref, ref 는 실제로 존재하고 그 팀원의 근거여야 함
     cleaned: list[MemberSection] = []
-    for sec in report.members:
+    for sec in (_normalize_section(x, cfg, digests) for x in report.members):
         dg = digests.get(sec.member)
         allowed_y = {e.ref for e in dg.yesterday} if dg else set()
         allowed_t = {e.ref for e in dg.today} if dg else set()
@@ -130,26 +180,65 @@ def validate(state: PMState, cfg: Config) -> tuple[Report | None, list[str], lis
     return report, errors, warnings
 
 
+def _hybrid(report: Report, state: PMState, cfg: Config) -> tuple[Report, bool]:
+    """검증을 통과한 LLM 문장은 살리고, 비어 버린 팀원만 원본 데이터 문장으로 채운다."""
+    template = {m.member: m for m in _template_members(state, cfg)}
+    have = {m.member: m for m in report.members}
+    members, replaced = [], False
+    for key in cfg.members:
+        sec = have.get(key)
+        dg = state["digests"].get(key)
+        has_evidence = bool(dg and (dg.yesterday or dg.today))
+        if sec is None or (has_evidence and not (sec.yesterday or sec.today)):
+            members.append(template[key])
+            replaced = replaced or has_evidence
+        else:
+            members.append(sec)
+    return report.model_copy(update={"members": members, "risks": sorted_risks(state)}), replaced
+
+
 def make_validator(cfg: Config):
     def validator(state: PMState) -> Command:
         report, errors, warnings = validate(state, cfg)
         base = {"trace": ["validator"], "warnings": warnings}
+        if errors:  # 운영 중 원인 파악을 위해 로그에 남김 (실제 LLM 실행에서 필요성 확인)
+            print(f"  검증 오류 {len(errors)}건 (시도 {state.get('attempts', 0)}회차):")
+            for e in errors[:10]:
+                print(f"   - {e[:200]}")
         if not errors:
             md = render_report(report, state["raw"], state.get("warnings", []) + warnings)
             return Command(goto="__end__", update={**base, "report": report, "report_md": md})
         if state.get("attempts", 0) < 2:
             return Command(goto="summarizer", update={**base, "validation_errors": errors})
-        return Command(goto="fallback_report", update={**base, "validation_errors": errors})
+        if report is None:          # LLM 호출 자체가 실패 → 원본 데이터 리포트
+            return Command(goto="fallback_report", update={**base, "validation_errors": errors})
+        report, replaced = _hybrid(report, state, cfg)
+        if replaced:
+            report = report.model_copy(update={"notice": "일부 팀원 요약은 자동 요약이 검증을 통과하지 못해 원본 데이터로 표시했습니다."})
+        warn = warnings + [f"요약 검증 오류 {len(errors)}건 — 통과한 문장만 사용"]
+        md = render_report(report, state["raw"], state.get("warnings", []) + warn)
+        return Command(goto="__end__", update={**base, "warnings": warn, "report": report, "report_md": md,
+                                               "validation_errors": errors})
 
     return validator
 
 
 # ------------------------------------------------------------------ 템플릿 리포트
+def _template_lines(items) -> list[str]:
+    lines = [f"{KIND_LABEL[e.kind]}: {e.title} [{e.ref}]" for e in items if e.kind != "commit"]
+    commits = [e for e in items if e.kind == "commit"]
+    if commits:   # 커밋은 한 줄로 묶는다 (실데이터에서 커밋 20줄이 나열되던 문제)
+        head = ", ".join(e.title for e in commits[:2])
+        more = f" 외 {len(commits) - 2}건" if len(commits) > 2 else ""
+        lines.append(f"커밋 {len(commits)}건: {head}{more} " + "".join(f"[{e.ref}]" for e in commits))
+    return lines
+
+
 def _template_members(state: PMState, cfg: Config) -> list[MemberSection]:
     out = []
     for key, dg in state["digests"].items():
-        y = [f"{KIND_LABEL[e.kind]}: {e.title} [{e.ref}]" for e in dg.yesterday]
-        t = [f"{KIND_LABEL[e.kind]}: {e.title} [{e.ref}]" for e in dg.today]
+        y = _template_lines(dg.yesterday)
+        t = _template_lines(dg.today)
         out.append(MemberSection(member=key, yesterday=y, today=t, note=None if (y or t) else "데이터 없음"))
     return out
 
