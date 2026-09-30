@@ -149,7 +149,7 @@ def test_hybrid_keeps_valid_llm_lines(cfg, fixture):
         return d
     s = run(cfg, fixture("normal_day"), FakeLLM(display=cfg.display, overrides={"summarizer": partly_bad}))
     good = fake_summary({"digests": [d.model_dump(mode="json") for d in s["digests"].values()], "risks": []})
-    assert s["report"].members[1].yesterday == good.members[1].yesterday      # 민수: LLM 문장 유지
+    assert s["report"].members[1].yesterday == [l.render() for l in good.members[1].yesterday]  # 민수: LLM 문장 유지
     assert "지어낸 일" not in s["report_md"]
 
 
@@ -186,3 +186,34 @@ def test_template_groups_commits():
         EvidenceItem(ref=f"commit:{i:07x}", kind="commit", title=f"c{i}", url="u") for i in range(5)]
     lines = _template_lines(items)
     assert len(lines) == 2 and lines[1].startswith("커밋 5건: c0, c1 외 3건")
+
+
+def test_llm_returns_bare_refs_or_structured_lines(cfg, fixture):
+    """실제 LLM 회귀(#7): 문장 없이 'pr:3', 'commit:...' 처럼 근거만 보낸 경우 근거 제목으로 문장을 채운다."""
+    from pm_agent.models import DraftLine, DraftMember, SummaryDraft
+    def bare(ctx):
+        return SummaryDraft(headline="h", members=[
+            DraftMember(member="haeden", yesterday=["pr:35", DraftLine(text="", refs=["commit:c3d4e5f"])],
+                        today=[DraftLine(text="토큰 버그 수정 예정", refs=["issue:41"])]),
+            *[DraftMember(member=k, note="데이터 없음") for k in ("minsu", "jiwoo", "seoyeon")]])
+    s = run(cfg, fixture("normal_day"), FakeLLM(display=cfg.display, overrides={"summarizer": bare}))
+    h = s["report"].members[0]
+    assert h.yesterday[0].startswith("PR 머지: 로그인 API 구현") and h.yesterday[0].endswith("[pr:35]")
+    assert h.yesterday[1].startswith("커밋: 리프레시 토큰") and h.today == ["토큰 버그 수정 예정 [issue:41]"]
+
+
+def test_draftline_parsing():
+    from pm_agent.models import DraftLine
+    assert DraftLine.model_validate("PR 머지 [pr:3]").refs == ["pr:3"]
+    assert DraftLine.model_validate("commit:abc1234").model_dump() == {"text": "", "refs": ["commit:abc1234"]}
+    assert DraftLine(text="x", refs=["[pr:1]"]).render() == "x [pr:1]"
+
+
+def test_ci_exclude_workflows(cfg, fixture):
+    """실데이터 회귀: 승인 거절된 PM 워크플로 실행을 'main 빌드 실패'로 잡던 오탐."""
+    from pm_agent.rules import compute_stats, evaluate
+    raw = fixture("ci_flaky")
+    assert any(c.area == "ci" for c in evaluate(raw, cfg))
+    cfg.ci_exclude_workflows = ["CI"]
+    assert not any(c.area == "ci" for c in evaluate(raw, cfg))
+    assert compute_stats(raw, cfg)["ci_success_rate"] == "-"

@@ -34,6 +34,7 @@ members:
 
 bots: ["dependabot[bot]", "github-actions[bot]", "renovate[bot]"]
 test_log_pattern: pytest        # pytest | jest | junit
+ci_exclude_workflows: []        # CI 분석에서 뺄 워크플로 이름 (예: 배포·알림용 워크플로)
 
 thresholds:
   pr_stale_hours: 48

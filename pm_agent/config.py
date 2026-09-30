@@ -96,6 +96,7 @@ class Config(BaseModel):
     members: dict[str, Member]
     bots: list[str] = Field(default_factory=list)
     test_log_pattern: str = "pytest"
+    ci_exclude_workflows: list[str] = Field(default_factory=list)   # CI 분석에서 뺄 워크플로 이름
     thresholds: Thresholds = Field(default_factory=Thresholds)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)

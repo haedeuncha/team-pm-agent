@@ -17,6 +17,7 @@ members:
     github: haedeuncha
 
 test_log_pattern: pytest
+ci_exclude_workflows: [daily-scrum]   # 이 저장소 자신의 PM 워크플로(승인 거절도 '실패'로 기록됨)는 CI 분석에서 제외
 
 schedule:
   skip_weekends: true

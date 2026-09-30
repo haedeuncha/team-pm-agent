@@ -65,7 +65,8 @@ def rule_issue(raw: RawActivity, cfg: Config) -> list[RiskCandidate]:
 
 def rule_ci(raw: RawActivity, cfg: Config) -> list[RiskCandidate]:
     th, out = cfg.thresholds, []
-    runs = [r for r in raw.ci_runs if r.conclusion in ("success", "failure")]
+    runs = [r for r in raw.ci_runs if r.conclusion in ("success", "failure")
+            and r.workflow not in cfg.ci_exclude_workflows]
     by_wf: dict[tuple[str, str], list] = defaultdict(list)
     for r in runs:
         by_wf[(r.repo, r.workflow)].append(r)
@@ -160,15 +161,17 @@ def activity_areas(raw: RawActivity) -> set[str]:
     areas: set[str] = set()
     if any(raw.in_window(p.updated_at) for p in raw.pull_requests) or raw.commits:
         areas.add("pr")
-    if any(raw.in_window(r.created_at) for r in raw.ci_runs):
+    if any(raw.in_window(r.created_at) for r in raw.ci_runs):  # (제외 워크플로 포함해도 '변화 있음' 판단에는 무해)
         areas.add("ci")
     if raw.issues:
         areas.add("issue")
     return areas
 
 
-def compute_stats(raw: RawActivity) -> dict[str, int | float | str]:
-    window_runs = [r for r in raw.ci_runs if raw.in_window(r.created_at) and r.conclusion in ("success", "failure")]
+def compute_stats(raw: RawActivity, cfg: Config | None = None) -> dict[str, int | float | str]:
+    exclude = set(cfg.ci_exclude_workflows) if cfg else set()
+    window_runs = [r for r in raw.ci_runs if raw.in_window(r.created_at) and r.conclusion in ("success", "failure")
+                   and r.workflow not in exclude]
     ok = sum(1 for r in window_runs if r.conclusion == "success")
     return {
         "commits": sum(1 for c in raw.all_commits() if raw.in_window(c.committed_at)),

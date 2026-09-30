@@ -32,6 +32,16 @@ def sorted_risks(state: PMState):
 MAX_COMMITS_FOR_LLM = 8
 
 
+def _render_line(line) -> str:
+    return line.render() if hasattr(line, "render") else str(line)
+
+
+def _to_section(m) -> MemberSection:
+    return MemberSection(member=m.member, note=m.note,
+                         yesterday=[_render_line(l) for l in m.yesterday],
+                         today=[_render_line(l) for l in m.today])
+
+
 def _llm_digest(d) -> dict:
     """LLM 에 넘길 근거: 커밋이 많으면 최근 몇 개만 (실제 LLM 실행에서 커밋 20건일 때 요약이 실패함)."""
     data = d.model_dump(mode="json")
@@ -62,9 +72,9 @@ def make_summarizer(llm: LLM, cfg: Config):
                     "validation_errors": [f"요약 LLM 오류: {type(e).__name__}"]}
         report = Report(
             date=report_date(state, cfg.tz), headline=draft.headline[:80], risks=risks,
-            diagnosis=state.get("diagnosis"), members=draft.members,
+            diagnosis=state.get("diagnosis"), members=[_to_section(m) for m in draft.members],
             display_names={k: m.display for k, m in cfg.members.items()},
-            stats=compute_stats(state["raw"]),
+            stats=compute_stats(state["raw"], cfg),
         )
         return {"attempts": attempts, "report": report, "validation_errors": [], "trace": ["summarizer"]}
 
@@ -98,14 +108,25 @@ def _repair_refs(line: str, allowed: set[str]) -> str:
     return BRACKET_RE.sub(fix, line)
 
 
+def _fill_text(line: str, items: dict) -> str:
+    """근거만 있고 문장이 빈 줄은 근거 제목으로 문장을 채운다 ('[pr:3]' → 'PR 생성: 제목 [pr:3]')."""
+    if REF_RE.sub("", line).strip():
+        return line
+    refs = REF_RE.findall(line)
+    first = items.get(refs[0]) if refs else None
+    if first is None:
+        return line
+    return f"{KIND_LABEL[first.kind]}: {first.title} " + "".join(f"[{r}]" for r in refs)
+
+
 def _normalize_section(sec: MemberSection, cfg: Config, digests) -> MemberSection:
     key = _member_key(sec.member, cfg)
     dg = digests.get(key)
-    ay = {e.ref for e in dg.yesterday} if dg else set()
-    at = {e.ref for e in dg.today} if dg else set()
+    iy = {e.ref: e for e in dg.yesterday} if dg else {}
+    it = {e.ref: e for e in dg.today} if dg else {}
     return MemberSection(member=key, note=sec.note,
-                         yesterday=[_repair_refs(l, ay) for l in sec.yesterday],
-                         today=[_repair_refs(l, at) for l in sec.today])
+                         yesterday=[_fill_text(_repair_refs(_render_line(l), set(iy)), iy) for l in sec.yesterday],
+                         today=[_fill_text(_repair_refs(_render_line(l), set(it)), it) for l in sec.today])
 
 
 def validate(state: PMState, cfg: Config) -> tuple[Report | None, list[str], list[str]]:
@@ -250,7 +271,7 @@ def make_fallback_report(cfg: Config):
             date=report_date(state, cfg.tz), headline="자동 요약에 실패해 원본 데이터로 만든 리포트입니다.",
             risks=risks, diagnosis=None, members=_template_members(state, cfg),
             display_names={k: m.display for k, m in cfg.members.items()},
-            stats=compute_stats(state["raw"]),
+            stats=compute_stats(state["raw"], cfg),
             notice="⚠️ 자동 요약 실패, 원본 데이터 기반 리포트",
         )
         md = render_report(report, state["raw"], state.get("warnings", []))
@@ -265,7 +286,7 @@ def make_quiet_report(cfg: Config):
             date=report_date(state, cfg.tz), headline="특이사항 없음 — 어제 팀 저장소에 새 활동이 없었습니다.",
             risks=[], members=_template_members(state, cfg),
             display_names={k: m.display for k, m in cfg.members.items()},
-            stats=compute_stats(state["raw"]),
+            stats=compute_stats(state["raw"], cfg),
         )
         md = render_report(report, state["raw"], state.get("warnings", []))
         return {"report": report, "report_md": md, "trace": ["quiet_report"]}

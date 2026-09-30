@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 Severity = Literal["critical", "high", "medium", "low"]
 Area = Literal["pr", "ci", "issue"]
@@ -258,8 +258,44 @@ class MemberSection(BaseModel):
     note: str | None = None
 
 
+BARE_REF_RE = re.compile(r"^\[?((?:commit|pr|issue|run):(?:[A-Za-z0-9_.-]+/)?[0-9a-f]+)\]?$")
+
+
+class DraftLine(BaseModel):
+    """LLM 이 쓰는 한 줄: 문장과 근거를 따로 받는다.
+    (실제 LLM 실행에서 '문장 끝에 [ref]' 형식을 헷갈려 ref 만 적어 보내는 문제가 있어 분리)"""
+    text: str = Field(description="한국어 한 문장. 근거 ref 는 여기에 쓰지 말고 refs 에 넣을 것")
+    refs: list[str] = Field(description='이 문장의 근거 ref 목록. EVIDENCE 의 ref 값을 그대로 복사, 예: ["pr:35"]')
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_str(cls, v):
+        if isinstance(v, str):
+            bare = BARE_REF_RE.match(v.strip())
+            if bare:                                   # "pr:3" 처럼 근거만 온 경우
+                return {"text": "", "refs": [bare.group(1)]}
+            return {"text": REF_RE.sub("", v).strip(), "refs": REF_RE.findall(v)}
+        return v
+
+    def render(self) -> str:
+        refs = [r.strip().strip("[]") for r in self.refs]
+        return f"{self.text.strip()} {''.join(f'[{r}]' for r in refs)}".strip()
+
+
+class DraftMember(BaseModel):
+    member: str = Field(description="EVIDENCE 의 member 값(영문 key)을 그대로")
+    yesterday: list[DraftLine] = Field(default_factory=list, description="yesterday 근거만 사용")
+    today: list[DraftLine] = Field(default_factory=list, description="today 근거만 사용")
+    note: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_section(cls, v):
+        return v.model_dump() if isinstance(v, BaseModel) else v
+
+
 class SummaryDraft(BaseModel):
-    members: list[MemberSection]
+    members: list[DraftMember]
     headline: str = Field(description="오늘의 한 줄 요약, 80자 이내")
 
 

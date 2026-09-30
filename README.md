@@ -241,6 +241,7 @@ Slack·Teams·메일(Gmail)은 [OPERATIONS.md 4장](docs/OPERATIONS.md#4-발송-
 | `members.<key>.display / github / emails` | — | 표시 이름, GitHub 아이디, 커밋 이메일(매칭용) |
 | `bots` | dependabot 등 | 집계에서 제외할 계정 |
 | `test_log_pattern` | `pytest` | 실패 테스트 이름 추출 방식: `pytest` / `jest` / `junit` |
+| `ci_exclude_workflows` | `[]` | CI 분석에서 뺄 워크플로 이름 (배포·알림용, 이 PM 워크플로 자신 등) |
 | `thresholds.*` | 48h / 5d / 3d / 5회 중 3회 | 위험 판정 기준 (1장 표) |
 | `schedule.skip_weekends / skip_holidays` | `true` | 주말·공휴일 건너뛰기 |
 | `schedule.holiday_country` | `KR` | `US`, `JP` 등 |
@@ -337,7 +338,7 @@ pm_agent/        collector/ (GitHub 수집·인증) · rules.py (판정) · agen
                  graph.py · llm.py · notify.py (채널) · store.py (기록) · security.py · workcalendar.py
 config.yaml      팀 설정            config.personal.yaml  개인 테스트용
 fixtures/        가상 팀 데이터      examples/             예시 리포트
-tests/           테스트 155개 (커버리지 99%)
+tests/           테스트 158개 (커버리지 99%)
 ```
 
 | 문서 | 내용 |
